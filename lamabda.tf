@@ -71,10 +71,10 @@ resource "aws_lambda_function" "rds_to_s3" {
 
   environment {
     variables = {
-      DB_HOST   = "my-rds-instance.cluster-123456789012.us-east-1.rds.amazonaws.com"
-      DB_NAME   = "mydatabase"
-      DB_USER   = "myuser"
-      DB_PASSWORD = "mypassword"  # Consider using AWS Secrets Manager instead
+      DB_HOST   = "edu.cd282sms4zh3.us-west-2.rds.amazonaws.com"
+      DB_NAME   = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_name"]
+      DB_USER   = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
+      DB_PASSWORD =jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
       S3_BUCKET = aws_s3_bucket.lambda_s3.bucket
     }
   }
