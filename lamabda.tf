@@ -68,7 +68,7 @@ resource "aws_lambda_function" "rds_to_s3" {
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   timeout         = 30  # Increase if needed
   memory_size     = 512
-
+  layers = ["arn:aws:lambda:us-east-1:898466741470:layer:psycopg2-py39:3"]  # Replace with the correct ARN for your region
   environment {
     variables = {
       DB_HOST   = "edu.cd282sms4zh3.us-west-2.rds.amazonaws.com"
