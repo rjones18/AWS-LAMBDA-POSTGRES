@@ -1,4 +1,4 @@
-# Create an S3 bucket for storing CSV exports
+# S3 Bucket for Lambda exports
 resource "aws_s3_bucket" "lambda_s3" {
   bucket = "my-lambda-export-bucket"
 }
@@ -11,9 +11,7 @@ resource "aws_iam_role" "lambda_role" {
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Principal = {
-        Service = "lambda.amazonaws.com"
-      }
+      Principal = { Service = "lambda.amazonaws.com" }
       Action = "sts:AssumeRole"
     }]
   })
@@ -41,11 +39,6 @@ resource "aws_iam_policy" "lambda_policy" {
         Effect   = "Allow"
         Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
         Resource = "arn:aws:logs:us-east-1:123456789012:*"
-      },
-            {
-        Effect   = "Allow"
-        Action   = ["lambda:GetLayerVersion"]
-        Resource = "*"
       }
     ]
   })
@@ -57,7 +50,20 @@ resource "aws_iam_role_policy_attachment" "lambda_attach" {
   policy_arn = aws_iam_policy.lambda_policy.arn
 }
 
-# Zip and Deploy Lambda Function
+# ✅ Lambda Layer for psycopg2
+data "archive_file" "psycopg2_layer" {
+  type        = "zip"
+  source_dir  = "psycopg2"  # Ensure this directory contains psycopg2 installed files
+  output_path = "psycopg2_layer.zip"
+}
+
+resource "aws_lambda_layer_version" "psycopg2_layer" {
+  filename            = data.archive_file.psycopg2_layer.output_path
+  layer_name          = "psycopg2-binary-layer"
+  compatible_runtimes = ["python3.9"]
+}
+
+# ✅ Zip and Deploy Lambda Function
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_file = "lambda_function.py"  # Ensure this file exists locally
@@ -71,9 +77,11 @@ resource "aws_lambda_function" "rds_to_s3" {
   role            = aws_iam_role.lambda_role.arn
   filename        = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  timeout         = 30  # Increase if needed
+  timeout         = 30
   memory_size     = 512
-  layers = ["arn:aws:lambda:us-east-1:898466741470:layer:psycopg2-py39:3"]  # Replace with the correct ARN for your region
+
+  layers = [aws_lambda_layer_version.psycopg2_layer.arn]
+  
   environment {
     variables = {
       DB_HOST   = "edu.cd282sms4zh3.us-west-2.rds.amazonaws.com"
