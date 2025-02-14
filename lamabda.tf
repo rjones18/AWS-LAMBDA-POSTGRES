@@ -1,7 +1,3 @@
-provider "aws" {
-  region = "us-east-1"
-}
-
 # Create an S3 bucket for storing CSV exports
 resource "aws_s3_bucket" "lambda_s3" {
   bucket = "my-lambda-export-bucket"
