@@ -53,7 +53,7 @@ resource "aws_iam_role_policy_attachment" "lambda_attach" {
 # ✅ Lambda Layer for psycopg2
 data "archive_file" "psycopg2_layer" {
   type        = "zip"
-  source_dir  = "psycopg2"  # Ensure this directory contains psycopg2 installed files
+  source_dir  = "psycopg2_layer"  # Ensure this directory contains psycopg2 installed files
   output_path = "psycopg2_layer.zip"
 }
 
