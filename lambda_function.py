@@ -1,6 +1,6 @@
 import json
 import boto3
-import psycopg2
+import psycopg
 import csv
 import os
 from io import StringIO
@@ -16,7 +16,7 @@ S3_FILE_NAME = "rds_data.csv"
 def lambda_handler(event, context):
     try:
         # Connect to PostgreSQL RDS
-        conn = psycopg2.connect(
+        conn = psycopg.connect(
             host=DB_HOST,
             dbname=DB_NAME,
             user=DB_USER,
