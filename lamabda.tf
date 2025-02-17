@@ -99,6 +99,8 @@ resource "aws_lambda_function" "rds_to_s3" {
       DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
       DB_PASSWORD = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
       S3_BUCKET   = aws_s3_bucket.lambda_s3.bucket
+      LD_LIBRARY_PATH = "/opt/lib"  # Tell Lambda where to find libpq
+      PYTHONPATH = "/opt/python"  # Ensure Lambda can find psycopg3
     }
   }
 
@@ -110,16 +112,5 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/rds_to_s3_lambda"
   retention_in_days = 14
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
