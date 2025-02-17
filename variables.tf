@@ -19,14 +19,10 @@ variable "lambda_layer_s3_bucket" {
 variable "aws_account_id" {
   description = "AWS Account ID"
   type        = string
+  default = "014498625953"
 }
 
 variable "rds_instance_id" {
   description = "RDS Instance ID"
-  type        = string
-}
-
-variable "rds_endpoint" {
-  description = "RDS Endpoint"
   type        = string
 }
