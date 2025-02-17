@@ -13,7 +13,7 @@ variable "s3_bucket_name" {
 variable "lambda_layer_s3_bucket" {
   description = "S3 Bucket for storing Lambda Layers"
   type        = string
-  default     = "my-lambda-layers-bucket"
+  default     = "reggie-lambda-layers-bucket"
 }
 
 variable "aws_account_id" {
