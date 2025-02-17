@@ -25,4 +25,5 @@ variable "aws_account_id" {
 variable "rds_instance_id" {
   description = "RDS Instance ID"
   type        = string
+  default = "edu"
 }
