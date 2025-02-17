@@ -50,16 +50,16 @@ resource "aws_iam_role_policy_attachment" "lambda_attach" {
   policy_arn = aws_iam_policy.lambda_policy.arn
 }
 
-# ✅ Lambda Layer for psycopg2
-data "archive_file" "psycopg2_layer" {
+# ✅ Lambda Layer for psycopg3
+data "archive_file" "psycopg3_layer" {
   type        = "zip"
-  source_dir  = "psycopg2_layer"  # Ensure this directory contains psycopg2 installed files
-  output_path = "psycopg2_layer.zip"
+  source_dir  = "psycopg3_layer"  # Ensure this directory contains psycopg2 installed files
+  output_path = "psycopg3_layer.zip"
 }
 
-resource "aws_lambda_layer_version" "psycopg2_layer" {
-  filename            = data.archive_file.psycopg2_layer.output_path
-  layer_name          = "psycopg2-binary-layer"
+resource "aws_lambda_layer_version" "psycopg3_layer" {
+  filename            = data.archive_file.psycopg3_layer.output_path
+  layer_name          = "psycopg3-binary-layer"
   compatible_runtimes = ["python3.9"]
 }
 
