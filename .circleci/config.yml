@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   build-lambda-layer:
     docker:
-      - image: amazonlinux:2  # Use Amazon Linux 2 for compatibility
+      - image: amazonlinux:2  # Ensure compatibility with AWS Lambda
 
     steps:
       - checkout  # Checkout repository code
@@ -11,14 +11,17 @@ jobs:
       - run:
           name: Install Required Packages
           command: |
-            yum install -y gcc python3 python3-devel python3-pip zip tar gzip
+            yum install -y gcc python3 python3-devel python3-pip zip tar postgresql-libs postgresql-devel
             python3 -m pip install --upgrade pip
 
       - run:
-          name: Install psycopg 3 in Layer Directory
+          name: Build psycopg3 Lambda Layer
           command: |
-            mkdir -p python
-            python3 -m pip install psycopg -t python  # Installing psycopg3
+            mkdir -p python/lib
+            python3 -m pip install psycopg -t python  # Install psycopg3 into layer
+
+            # Ensure libpq is included in the layer
+            cp /usr/lib64/libpq.so* python/lib/
 
       - run:
           name: Package Lambda Layer
@@ -68,4 +71,5 @@ workflows:
       - terraform-deploy:
           requires:
             - build-lambda-layer  # Terraform runs only after Lambda Layer is built
+
 
