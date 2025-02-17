@@ -34,7 +34,7 @@ jobs:
       - image: hashicorp/terraform:latest  # Use Terraform's official image
 
     environment:
-      AWS_REGION: "us-east-1"  # Ensure the region is set
+      AWS_REGION: "us-west-2"  # Ensure the region is set
 
     steps:
       - checkout  # Checkout the code
@@ -47,7 +47,7 @@ jobs:
           command: |
             export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
             export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
-            export AWS_REGION="us-east-1"
+            export AWS_REGION="us-west-2"
 
       - run:
           name: Terraform Init
