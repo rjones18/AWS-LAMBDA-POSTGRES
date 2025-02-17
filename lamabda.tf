@@ -1,9 +1,9 @@
-# S3 Bucket for Lambda exports
+# ✅ Create an S3 Bucket for Lambda exports
 resource "aws_s3_bucket" "lambda_s3" {
-  bucket = "my-lambda-export-bucket"
+  bucket = var.s3_bucket_name
 }
 
-# IAM Role for Lambda
+# ✅ IAM Role for Lambda Execution
 resource "aws_iam_role" "lambda_role" {
   name = "lambda_rds_to_s3_role"
 
@@ -17,7 +17,7 @@ resource "aws_iam_role" "lambda_role" {
   })
 }
 
-# IAM Policy for Lambda to access S3 and RDS
+# ✅ IAM Policy for Lambda to Access RDS & S3
 resource "aws_iam_policy" "lambda_policy" {
   name        = "lambda_rds_to_s3_policy"
   description = "Policy for Lambda to access RDS and S3"
@@ -28,45 +28,54 @@ resource "aws_iam_policy" "lambda_policy" {
       {
         Effect   = "Allow"
         Action   = ["s3:PutObject"]
-        Resource = "arn:aws:s3:::my-lambda-export-bucket/*"
+        Resource = "arn:aws:s3:::${var.s3_bucket_name}/*"
       },
       {
         Effect   = "Allow"
         Action   = ["rds-db:connect"]
-        Resource = "arn:aws:rds:us-east-1:123456789012:db:my-rds-instance"
+        Resource = "arn:aws:rds:${var.aws_region}:${var.aws_account_id}:db:${var.rds_instance_id}"
       },
       {
         Effect   = "Allow"
         Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
-        Resource = "arn:aws:logs:us-east-1:123456789012:*"
+        Resource = "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:*"
       }
     ]
   })
 }
 
-# Attach IAM policy to role
+# ✅ Attach IAM Policy to Role
 resource "aws_iam_role_policy_attachment" "lambda_attach" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.lambda_policy.arn
 }
 
-# ✅ Lambda Layer for psycopg3
-data "archive_file" "psycopg3_layer" {
-  type        = "zip"
-  source_dir  = "psycopg3_layer"  # Ensure this directory contains psycopg2 installed files
-  output_path = "psycopg3_layer.zip"
+# ✅ S3 Bucket for Lambda Layer Storage
+resource "aws_s3_bucket" "lambda_layers_bucket" {
+  bucket = var.lambda_layer_s3_bucket
 }
 
+# ✅ Upload Psycopg3 Lambda Layer to S3
+resource "aws_s3_object" "lambda_layer" {
+  bucket = aws_s3_bucket.lambda_layers_bucket.id
+  key    = "psycopg3-layer.zip"
+  source = "psycopg3-layer.zip"
+  etag   = filemd5("psycopg3-layer.zip")
+}
+
+# ✅ Lambda Layer Definition
 resource "aws_lambda_layer_version" "psycopg3_layer" {
-  filename            = data.archive_file.psycopg3_layer.output_path
-  layer_name          = "psycopg3-binary-layer"
-  compatible_runtimes = ["python3.9"]
+  layer_name          = "psycopg3-layer"
+  s3_bucket          = aws_s3_bucket.lambda_layers_bucket.id
+  s3_key             = aws_s3_object.lambda_layer.key
+  compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11"]
+  description        = "Psycopg3 Lambda Layer for Amazon Linux 2"
 }
 
 # ✅ Zip and Deploy Lambda Function
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_file = "lambda_function.py"  # Ensure this file exists locally
+  source_file = "lambda_function.py"
   output_path = "lambda_function.zip"
 }
 
@@ -80,26 +89,27 @@ resource "aws_lambda_function" "rds_to_s3" {
   timeout         = 30
   memory_size     = 512
 
-  layers = [aws_lambda_layer_version.psycopg2_layer.arn]
+  layers = [aws_lambda_layer_version.psycopg3_layer.arn]
   
   environment {
     variables = {
-      DB_HOST   = "edu.cd282sms4zh3.us-west-2.rds.amazonaws.com"
-      DB_NAME   = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_name"]
-      DB_USER   = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
-      DB_PASSWORD =jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
-      S3_BUCKET = aws_s3_bucket.lambda_s3.bucket
+      DB_HOST     = var.rds_endpoint
+      DB_NAME     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_name"]
+      DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
+      DB_PASSWORD = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
+      S3_BUCKET   = aws_s3_bucket.lambda_s3.bucket
     }
   }
 
   depends_on = [aws_iam_role_policy_attachment.lambda_attach]
 }
 
-# CloudWatch Log Group for Lambda
+# ✅ CloudWatch Log Group for Lambda
 resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/rds_to_s3_lambda"
   retention_in_days = 14
 }
+
 
 
 
