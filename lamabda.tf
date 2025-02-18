@@ -98,8 +98,8 @@ resource "aws_lambda_function" "rds_to_s3" {
       DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
       DB_PASSWORD = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
       S3_BUCKET   = aws_s3_bucket.lambda_s3.bucket
-      LD_LIBRARY_PATH = "/opt/lib:/usr/lib64"  # ✅ Ensure Lambda can find libpq
-      PYTHONPATH = "/opt/python"  # ✅ Ensure Lambda can import psycopg3
+      LD_LIBRARY_PATH = "/opt/python/lib:/opt/lib:/usr/lib64:/usr/lib"  # ✅ Fix library path
+      PYTHONPATH = "/opt/python:/opt"  # ✅ Ensure Lambda can import psycopg3
     }
   }
 
