@@ -12,7 +12,7 @@ jobs:
           name: Install System Dependencies
           command: |
             yum update -y
-            yum install -y gcc python3 python3-devel python3-pip zip tar \
+            yum install -y gcc python3 python3-devel python3-pip zip tar gzip \
                            postgresql postgresql-devel postgresql-libs \
                            libpq-devel make openssl openssl-devel
 
