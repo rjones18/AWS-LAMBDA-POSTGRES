@@ -22,20 +22,19 @@ jobs:
           name: Build psycopg3 Lambda Layer with libpq
           command: |
             mkdir -p python/lib python/site-packages
-            mkdir -p psycopg3-layer/python
 
             # Install psycopg3 binary version (avoids compilation issues)
-            # python3 -m pip install "psycopg[binary,pool]" -t python/site-packages  
-            python3 -m pip install --platform manylinux2014_x86_64 --target . --python-version 3.12 --only-binary=:all: psycopg-binary -t psycopg3-layer/python 
+            python3 -m pip install "psycopg[binary,pool]" -t python/site-packages  
+
             # Move psycopg3 to root directory
-            mv psycopg3-layer/python/* python/
+            mv python/site-packages/* python/
 
             # Copy required PostgreSQL shared libraries
             cp /usr/lib64/libpq.so* python/lib/
             cp /usr/lib64/libssl.so* python/lib/
             cp /usr/lib64/libcrypto.so* python/lib/
 
-            # Verify package installation#
+            # Verify package installation
             ls -lh python/
             ls -lh python/lib/
 
