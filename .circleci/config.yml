@@ -40,7 +40,7 @@ jobs:
 
       - run:
           name: Package Lambda Layer
-          command: zip -r psycopg3-layer.zip python
+          command: zip -r psycopg3-layer.zip .
 
       - persist_to_workspace:
           root: .
