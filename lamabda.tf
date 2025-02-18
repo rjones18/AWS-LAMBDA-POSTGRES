@@ -55,21 +55,21 @@ resource "aws_s3_bucket" "lambda_layers_bucket" {
   bucket = var.lambda_layer_s3_bucket
 }
 
-# ✅ Upload Psycopg3 Lambda Layer to S3
+# ✅ Upload pg8000 Lambda Layer to S3
 resource "aws_s3_object" "lambda_layer" {
   bucket = aws_s3_bucket.lambda_layers_bucket.id
-  key    = "psycopg3-layer.zip"
-  source = "psycopg3-layer.zip"
-  etag   = filemd5("psycopg3-layer.zip")
+  key    = "pg8000-layer.zip"
+  source = "pg8000-layer.zip"
+  etag   = filemd5("pg8000-layer.zip")
 }
 
 # ✅ Lambda Layer Definition
-resource "aws_lambda_layer_version" "psycopg3_layer" {
-  layer_name          = "psycopg3-layer"
+resource "aws_lambda_layer_version" "pg8000_layer" {
+  layer_name          = "pg8000-layer"
   s3_bucket          = aws_s3_bucket.lambda_layers_bucket.id
   s3_key             = aws_s3_object.lambda_layer.key
   compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11"]
-  description        = "Psycopg3 Lambda Layer for Amazon Linux 2"
+  description        = "pg8000 Lambda Layer for Amazon Linux 2"
 }
 
 # ✅ Zip and Deploy Lambda Function
@@ -105,12 +105,8 @@ resource "aws_lambda_function" "rds_to_s3" {
   depends_on = [aws_iam_role_policy_attachment.lambda_attach]
 }
 
-
-
 # ✅ CloudWatch Log Group for Lambda
 resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/rds_to_s3_lambda"
   retention_in_days = 14
 }
-
-
