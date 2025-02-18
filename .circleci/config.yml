@@ -12,9 +12,9 @@ jobs:
           name: Install System Dependencies
           command: |
             yum update -y
-            yum install -y gcc python3 python3-devel python3-pip zip tar gzip \
+            yum install -y gcc python3 python3-devel python3-pip zip tar \
                            postgresql postgresql-devel postgresql-libs \
-                           libpq-devel openssl openssl-devel
+                           libpq-devel make openssl openssl-devel
 
             python3 -m pip install --upgrade pip
 
@@ -23,17 +23,15 @@ jobs:
           command: |
             mkdir -p python/lib
             
-            # Install psycopg3 (precompiled binary version to avoid build issues)
+            # Install psycopg3 binary version (avoids compilation issues)
             python3 -m pip install "psycopg[binary]" -t python  
 
-            # Copy required shared libraries
+            # Copy required PostgreSQL shared libraries
             cp /usr/lib64/libpq.so* python/lib/
             cp /usr/lib64/libssl.so* python/lib/
             cp /usr/lib64/libcrypto.so* python/lib/
 
-      - run:
-          name: Verify Installed Packages
-          command: |
+            # Verify contents
             ls -lh python/
             ls -lh python/lib/
 
