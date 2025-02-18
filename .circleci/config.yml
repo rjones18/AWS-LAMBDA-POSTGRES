@@ -29,6 +29,14 @@ jobs:
             # Verify psycopg3 installation
             ls -lh python/
 
+            # Copy required PostgreSQL shared libraries
+            cp /usr/lib64/libpq.so* python/lib/
+            cp /usr/lib64/libssl.so* python/lib/
+            cp /usr/lib64/libcrypto.so* python/lib/
+
+            # Verify libpq installation
+            ls -lh python/lib/
+
       - run:
           name: Package Lambda Layer
           command: zip -r psycopg3-layer.zip python
