@@ -36,6 +36,8 @@ jobs:
           command: |
             ls -lh python/
             ls -lh python/lib/
+            pwd
+            ls -al
 
       - run:
           name: Package Lambda Layer
