@@ -14,34 +14,30 @@ jobs:
             yum update -y
             yum install -y gcc python3 python3-devel python3-pip zip tar gzip \
                            postgresql postgresql-devel postgresql-libs \
-                           libpq-devel openssl openssl-devel
+                           libpq-devel make openssl openssl-devel
 
             python3 -m pip install --upgrade pip
 
       - run:
           name: Build psycopg3 Lambda Layer with libpq
           command: |
-            mkdir -p python/lib
-            
-            # Install psycopg3 (precompiled binary version to avoid build issues)
-            python3 -m pip install "psycopg[binary,pool]" -t python  
+            mkdir -p python lib
 
-            # Copy required shared libraries
-            cp /usr/lib64/libpq.so* python/lib/
-            cp /usr/lib64/libssl.so* python/lib/
-            cp /usr/lib64/libcrypto.so* python/lib/
+            # ✅ Install psycopg3 binary version
+            python3 -m pip install "psycopg[binary]" -t python
 
-      - run:
-          name: Verify Installed Packages
-          command: |
+            # ✅ Move PostgreSQL shared libraries to /lib/ instead of /python/lib/
+            cp /usr/lib64/libpq.so* lib/
+            cp /usr/lib64/libssl.so* lib/
+            cp /usr/lib64/libcrypto.so* lib/
+
+            # ✅ Verify structure
             ls -lh python/
-            ls -lh python/lib/
-            pwd
-            ls -al
+            ls -lh lib/
 
       - run:
           name: Package Lambda Layer
-          command: zip -r psycopg3-layer.zip python
+          command: zip -r psycopg3-layer.zip python lib
 
       - persist_to_workspace:
           root: .
@@ -87,4 +83,5 @@ workflows:
       - terraform-deploy:
           requires:
             - build-lambda-layer  # Terraform runs only after Lambda Layer is built
+
 
