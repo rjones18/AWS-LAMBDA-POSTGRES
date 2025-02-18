@@ -21,8 +21,10 @@ jobs:
       - run:
           name: Build psycopg3 Lambda Layer with libpq
           command: |
+            mkdir -p python/lib
+
             # Install psycopg3 binary version (avoids compilation issues)
-            python3 -m pip install "psycopg[binary,pool]" 
+            python3 -m pip install "psycopg[binary,pool]"-t python  
 
             # Verify psycopg3 installation
             ls -lh python/
