@@ -52,7 +52,7 @@ jobs:
       AWS_REGION: "us-west-2"  # Ensure the region is set
 
     steps:
-      - checkout  # Checkout the code
+      - checkout  # Checkout the code.
 
       - attach_workspace:
           at: .
