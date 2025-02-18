@@ -79,7 +79,6 @@ data "archive_file" "lambda_zip" {
   output_path = "lambda_function.zip"
 }
 
-# ✅ Use these values wherever needed
 resource "aws_lambda_function" "rds_to_s3" {
   function_name    = "rds_to_s3_lambda"
   runtime         = "python3.9"
@@ -94,7 +93,7 @@ resource "aws_lambda_function" "rds_to_s3" {
   
   environment {
     variables = {
-      DB_HOST     = data.aws_db_instance.rds_instance.endpoint  # Automatically fetch the RDS endpoint
+      DB_HOST     = data.aws_db_instance.rds_instance.endpoint
       DB_NAME     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_name"]
       DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
       DB_PASSWORD = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
