@@ -89,7 +89,7 @@ resource "aws_lambda_function" "rds_to_s3" {
   timeout         = 30
   memory_size     = 512
 
-  layers = [aws_lambda_layer_version.psycopg3_layer.arn]
+  layers = [aws_lambda_layer_version.pg8000_layer.arn]
   
   environment {
     variables = {
@@ -98,13 +98,13 @@ resource "aws_lambda_function" "rds_to_s3" {
       DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
       DB_PASSWORD = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
       S3_BUCKET   = aws_s3_bucket.lambda_s3.bucket
-      LD_LIBRARY_PATH = "/opt/lib:/opt/python/lib:/usr/lib64:/usr/lib"  # ✅ Fix library path
-      PYTHONPATH = "/opt/python:/opt/python/lib:/opt"  # ✅ Ensure Lambda can import psycopg3
+      PYTHONPATH = "/opt/python"  # ✅ Ensure Lambda can import pg8000
     }
   }
 
   depends_on = [aws_iam_role_policy_attachment.lambda_attach]
 }
+
 
 
 # ✅ CloudWatch Log Group for Lambda

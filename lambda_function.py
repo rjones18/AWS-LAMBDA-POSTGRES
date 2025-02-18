@@ -1,6 +1,6 @@
 import json
 import boto3
-import psycopg
+import pg8000
 import csv
 import os
 from io import StringIO
@@ -15,25 +15,29 @@ S3_FILE_NAME = "rds_data.csv"
 
 def lambda_handler(event, context):
     try:
-        # ✅ Use Psycopg3 with connection pooling
-        with psycopg.connect(
-            f"dbname={DB_NAME} user={DB_USER} password={DB_PASSWORD} host={DB_HOST} sslmode=require"
-        ) as conn:
-            with conn.cursor() as cursor:
-                
-                # ✅ Query the database
-                query = "SELECT * FROM your_table;"  # Change 'your_table' to your actual table name
-                cursor.execute(query)
-                rows = cursor.fetchall()
+        # ✅ Connect to PostgreSQL RDS using pg8000
+        conn = pg8000.connect(
+            host=DB_HOST,
+            database=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            ssl_context=True  # ✅ Ensures SSL connection
+        )
+        cursor = conn.cursor()
 
-                # ✅ Get column names
-                column_names = [desc[0] for desc in cursor.description]
+        # ✅ Query the database
+        query = "SELECT * FROM your_table;"  # Change 'your_table' to your actual table name
+        cursor.execute(query)
+        rows = cursor.fetchall()
 
-                # ✅ Convert data to CSV
-                csv_buffer = StringIO()
-                csv_writer = csv.writer(csv_buffer)
-                csv_writer.writerow(column_names)  # Write header
-                csv_writer.writerows(rows)  # Write data
+        # ✅ Get column names
+        column_names = [desc[0] for desc in cursor.description]
+
+        # ✅ Convert data to CSV
+        csv_buffer = StringIO()
+        csv_writer = csv.writer(csv_buffer)
+        csv_writer.writerow(column_names)  # Write header
+        csv_writer.writerows(rows)  # Write data
 
         # ✅ Upload CSV to S3
         s3_client = boto3.client("s3")
@@ -42,6 +46,10 @@ def lambda_handler(event, context):
             Key=S3_FILE_NAME,
             Body=csv_buffer.getvalue()
         )
+
+        # ✅ Close connections
+        cursor.close()
+        conn.close()
 
         return {
             "statusCode": 200,

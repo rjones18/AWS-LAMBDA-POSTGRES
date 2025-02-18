@@ -12,37 +12,26 @@ jobs:
           name: Install System Dependencies
           command: |
             yum update -y
-            yum install -y gcc python3 python3-devel python3-pip zip tar gzip \
-                           postgresql postgresql-devel postgresql-libs \
-                           libpq-devel make openssl openssl-devel
-
+            yum install -y gcc python3 python3-devel python3-pip zip tar gzip
             python3 -m pip install --upgrade pip
 
       - run:
-          name: Build psycopg3 Lambda Layer with libpq
+          name: Build pg8000 Lambda Layer
           command: |
-            mkdir -p python lib
-
-            # ✅ Install psycopg3 binary version
-            python3 -m pip install "psycopg[binary]" -t python
-
-            # ✅ Move PostgreSQL shared libraries to /lib/ instead of /python/lib/
-            cp /usr/lib64/libpq.so* lib/
-            cp /usr/lib64/libssl.so* lib/
-            cp /usr/lib64/libcrypto.so* lib/
+            mkdir -p python
+            python3 -m pip install "pg8000" -t python  # ✅ Install pg8000
 
             # ✅ Verify structure
             ls -lh python/
-            ls -lh lib/
 
       - run:
           name: Package Lambda Layer
-          command: zip -r psycopg3-layer.zip python lib
+          command: zip -r pg8000-layer.zip python
 
       - persist_to_workspace:
           root: .
           paths:
-            - psycopg3-layer.zip  # Store the zip file for Terraform
+            - pg8000-layer.zip  # Store the zip file for Terraform
 
   terraform-deploy:
     docker:
@@ -52,7 +41,7 @@ jobs:
       AWS_REGION: "us-west-2"  # Ensure the region is set
 
     steps:
-      - checkout  # Checkout the code.
+      - checkout  # Checkout the code
 
       - attach_workspace:
           at: .
