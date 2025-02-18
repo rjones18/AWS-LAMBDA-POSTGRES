@@ -24,7 +24,7 @@ jobs:
             mkdir -p python/lib python/site-packages
 
             # Install psycopg3 binary version (avoids compilation issues)
-            python3 -m pip install "psycopg[binary]" -t python/site-packages  
+            python3 -m pip install "psycopg[binary,pool]" -t python/site-packages  
 
             # Move psycopg3 to root directory
             mv python/site-packages/* python/
