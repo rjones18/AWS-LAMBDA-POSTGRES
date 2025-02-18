@@ -1,4 +1,4 @@
-# ✅ Create an S3 Bucket for Lambda exports
+# ✅ Create an S3 Bucket for Lambda export
 resource "aws_s3_bucket" "lambda_s3" {
   bucket = var.s3_bucket_name
 }
