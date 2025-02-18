@@ -21,21 +21,11 @@ jobs:
       - run:
           name: Build psycopg3 Lambda Layer with libpq
           command: |
-            mkdir -p python/lib
-
             # Install psycopg3 binary version (avoids compilation issues)
-            python3 -m pip install "psycopg[binary]" -t python  
+            python3 -m pip install "psycopg[binary,pool]" 
 
             # Verify psycopg3 installation
             ls -lh python/
-
-            # Copy required PostgreSQL shared libraries
-            cp /usr/lib64/libpq.so* python/lib/
-            cp /usr/lib64/libssl.so* python/lib/
-            cp /usr/lib64/libcrypto.so* python/lib/
-
-            # Verify libpq installation
-            ls -lh python/lib/
 
       - run:
           name: Package Lambda Layer
