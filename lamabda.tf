@@ -3,6 +3,7 @@ resource "aws_s3_bucket" "lambda_s3" {
   bucket = var.s3_bucket_name
 }
 
+
 # ✅ IAM Role for Lambda Execution
 resource "aws_iam_role" "lambda_role" {
   name = "lambda_rds_to_s3_role"
@@ -110,3 +111,163 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/rds_to_s3_lambda"
   retention_in_days = 14
 }
+
+
+# Step Function IAM Role
+resource "aws_iam_role" "step_function_role" {
+  name = "step_function_lambda_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "states.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+# IAM Policy for Step Function to invoke Lambda
+resource "aws_iam_policy" "step_function_policy" {
+  name = "step_function_lambda_policy"
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "lambda:InvokeFunction"
+        ]
+        Resource = [
+          aws_lambda_function.rds_to_s3.arn
+        ]
+      }
+    ]
+  })
+}
+
+# Attach policy to Step Function role
+resource "aws_iam_role_policy_attachment" "step_function_policy_attachment" {
+  role       = aws_iam_role.step_function_role.name
+  policy_arn = aws_iam_policy.step_function_policy.arn
+}
+
+# Step Function state machine
+resource "aws_sfn_state_machine" "sfn_state_machine" {
+  name     = "rds-to-s3-state-machine"
+  role_arn = aws_iam_role.step_function_role.arn
+
+  definition = jsonencode({
+    Comment = "A state machine that invokes a Lambda function"
+    StartAt = "InvokeLambda"
+    States = {
+      InvokeLambda = {
+        Type = "Task"
+        Resource = aws_lambda_function.rds_to_s3.arn
+        End = true
+      }
+    }
+  })
+
+  logging_configuration {
+    log_destination        = "${aws_cloudwatch_log_group.step_function_logs.arn}:*"
+    include_execution_data = true
+    level                 = "ALL"
+  }
+}
+
+# CloudWatch Log Group for Step Function
+resource "aws_cloudwatch_log_group" "step_function_logs" {
+  name              = "/aws/states/rds-to-s3-state-machine"
+  retention_in_days = 14
+}
+
+# IAM Policy for Step Function logging
+resource "aws_iam_policy" "step_function_logging_policy" {
+  name = "step_function_logging_policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogDelivery",
+          "logs:GetLogDelivery",
+          "logs:UpdateLogDelivery",
+          "logs:DeleteLogDelivery",
+          "logs:ListLogDeliveries",
+          "logs:PutLogEvents",
+          "logs:PutResourcePolicy",
+          "logs:DescribeResourcePolicies",
+          "logs:DescribeLogGroups"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Attach logging policy to Step Function role
+resource "aws_iam_role_policy_attachment" "step_function_logging_attachment" {
+  role       = aws_iam_role.step_function_role.name
+  policy_arn = aws_iam_policy.step_function_logging_policy.arn
+}
+
+# Optional: Add CloudWatch Event Rule to trigger Step Function on a schedule
+resource "aws_cloudwatch_event_rule" "step_function_trigger" {
+  name                = "trigger-rds-to-s3-step-function"
+  description         = "Trigger Step Function on a schedule"
+  schedule_expression = "rate(1 day)" # Adjust as needed
+}
+
+resource "aws_cloudwatch_event_target" "step_function_target" {
+  rule      = aws_cloudwatch_event_rule.step_function_trigger.name
+  target_id = "StepFunctionTarget"
+  arn       = aws_sfn_state_machine.sfn_state_machine.arn
+  role_arn  = aws_iam_role.cloudwatch_role.arn
+}
+
+# IAM Role for CloudWatch Events
+resource "aws_iam_role" "cloudwatch_role" {
+  name = "cloudwatch_step_function_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "events.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+# IAM Policy for CloudWatch to invoke Step Function
+resource "aws_iam_policy" "cloudwatch_policy" {
+  name = "cloudwatch_step_function_policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "states:StartExecution"
+      ]
+      Resource = [
+        aws_sfn_state_machine.sfn_state_machine.arn
+      ]
+    }]
+  })
+}
+
+# Attach policy to CloudWatch role
+resource "aws_iam_role_policy_attachment" "cloudwatch_policy_attachment" {
+  role       = aws_iam_role.cloudwatch_role.name
+  policy_arn = aws_iam_policy.cloudwatch_policy.arn
+}
+
