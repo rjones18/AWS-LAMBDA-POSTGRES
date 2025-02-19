@@ -39,17 +39,6 @@ def lambda_handler(event, context):
         """
         cursor.execute(create_table_query)
         
-        # Insert sample data
-        insert_data_query = """
-        INSERT INTO employees (first_name, last_name, email, hire_date, department, salary)
-        VALUES 
-            ('John', 'Doe', 'john.doe@example.com', '2023-01-15', 'Engineering', 75000.00),
-            ('Jane', 'Smith', 'jane.smith@example.com', '2023-02-01', 'Marketing', 65000.00),
-            ('Bob', 'Johnson', 'bob.johnson@example.com', '2023-03-10', 'Sales', 60000.00)
-        ON CONFLICT DO NOTHING;
-        """
-        cursor.execute(insert_data_query)
-        
         # Commit the changes
         conn.commit()
 
