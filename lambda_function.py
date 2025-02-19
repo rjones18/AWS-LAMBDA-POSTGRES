@@ -25,8 +25,36 @@ def lambda_handler(event, context):
         )
         cursor = conn.cursor()
 
+        # Create table if it doesn't exist
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS employees (
+            id SERIAL PRIMARY KEY,
+            first_name VARCHAR(50),
+            last_name VARCHAR(50),
+            email VARCHAR(100),
+            hire_date DATE,
+            department VARCHAR(50),
+            salary DECIMAL(10,2)
+        );
+        """
+        cursor.execute(create_table_query)
+        
+        # Insert sample data
+        insert_data_query = """
+        INSERT INTO employees (first_name, last_name, email, hire_date, department, salary)
+        VALUES 
+            ('John', 'Doe', 'john.doe@example.com', '2023-01-15', 'Engineering', 75000.00),
+            ('Jane', 'Smith', 'jane.smith@example.com', '2023-02-01', 'Marketing', 65000.00),
+            ('Bob', 'Johnson', 'bob.johnson@example.com', '2023-03-10', 'Sales', 60000.00)
+        ON CONFLICT DO NOTHING;
+        """
+        cursor.execute(insert_data_query)
+        
+        # Commit the changes
+        conn.commit()
+
         # ✅ Query the database
-        query = "SELECT * FROM public;"  # Change 'your_table' to your actual table name
+        query = "SELECT * FROM employees;"  # Change 'your_table' to your actual table name
         cursor.execute(query)
         rows = cursor.fetchall()
 
