@@ -26,7 +26,7 @@ def lambda_handler(event, context):
         cursor = conn.cursor()
 
         # ✅ Query the database
-        query = "SELECT * FROM your_table;"  # Change 'your_table' to your actual table name
+        query = "SELECT * FROM public;"  # Change 'your_table' to your actual table name
         cursor.execute(query)
         rows = cursor.fetchall()
 
