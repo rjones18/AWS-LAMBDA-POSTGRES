@@ -37,6 +37,17 @@ resource "aws_iam_policy" "lambda_policy" {
         Resource = "arn:aws:rds:${var.aws_region}:${var.aws_account_id}:db:${var.rds_instance_id}"
       },
       {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateNetworkInterface",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DeleteNetworkInterface",
+          "ec2:AssignPrivateIpAddresses",
+          "ec2:UnassignPrivateIpAddresses"
+        ]
+        Resource = "*"
+      },
+      {
         Effect   = "Allow"
         Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
         Resource = "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:*"
@@ -50,6 +61,12 @@ resource "aws_iam_role_policy_attachment" "lambda_attach" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.lambda_policy.arn
 }
+
+resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
 
 # ✅ S3 Bucket for Lambda Layer Storage
 resource "aws_s3_bucket" "lambda_layers_bucket" {
@@ -80,6 +97,20 @@ data "archive_file" "lambda_zip" {
   output_path = "lambda_function.zip"
 }
 
+resource "aws_security_group" "lambda_sg" {
+  name        = "lambda_sg"
+  description = "Security group for Lambda function"
+  vpc_id      = "vpc-00341f3387967cf99"
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+
 resource "aws_lambda_function" "rds_to_s3" {
   function_name    = "rds_to_s3_lambda"
   runtime         = "python3.9"
@@ -92,6 +123,11 @@ resource "aws_lambda_function" "rds_to_s3" {
 
   layers = [aws_lambda_layer_version.pg8000_layer.arn]
   
+  vpc_config {
+    subnet_ids         = ["subnet-0d529b400ecb2a00d","subnet-0a1f46ad09f96fab5"] # Add your private subnet IDs
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
   environment {
     variables = {
       DB_HOST     = data.aws_db_instance.rds_instance.endpoint
