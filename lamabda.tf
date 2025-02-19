@@ -118,7 +118,7 @@ resource "aws_lambda_function" "rds_to_s3" {
   role            = aws_iam_role.lambda_role.arn
   filename        = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  timeout         = 30
+  timeout         = 60
   memory_size     = 512
 
   layers = [aws_lambda_layer_version.pg8000_layer.arn]
