@@ -61,28 +61,28 @@ def lambda_handler(event, context):
         # ✅ Get column names
         column_names = [desc[0] for desc in cursor.description]
 
-        # # ✅ Convert data to CSV
-        # csv_buffer = StringIO()
-        # csv_writer = csv.writer(csv_buffer)
-        # csv_writer.writerow(column_names)  # Write header
-        # csv_writer.writerows(rows)  # Write data
+        # ✅ Convert data to CSV
+        csv_buffer = StringIO()
+        csv_writer = csv.writer(csv_buffer)
+        csv_writer.writerow(column_names)  # Write header
+        csv_writer.writerows(rows)  # Write data
 
-        # # ✅ Upload CSV to S3
-        # s3_client = boto3.client("s3")
-        # s3_client.put_object(
-        #     Bucket=S3_BUCKET,
-        #     Key=S3_FILE_NAME,
-        #     Body=csv_buffer.getvalue()
-        # )
+        # ✅ Upload CSV to S3
+        s3_client = boto3.client("s3")
+        s3_client.put_object(
+            Bucket=S3_BUCKET,
+            Key=S3_FILE_NAME,
+            Body=csv_buffer.getvalue()
+        )
 
-        # # ✅ Close connections
-        # cursor.close()
-        # conn.close()
+        # ✅ Close connections
+        cursor.close()
+        conn.close()
 
-        # return {
-        #     "statusCode": 200,
-        #     "body": json.dumps(f"Data successfully exported to s3://{S3_BUCKET}/{S3_FILE_NAME}")
-        # }
+        return {
+            "statusCode": 200,
+            "body": json.dumps(f"Data successfully exported to s3://{S3_BUCKET}/{S3_FILE_NAME}")
+        }
 
     except Exception as e:
         return {
