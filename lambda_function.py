@@ -39,6 +39,17 @@ def lambda_handler(event, context):
         """
         cursor.execute(create_table_query)
         
+        # Insert sample data
+        insert_data_query = """
+        INSERT INTO employees (first_name, last_name, email, hire_date, department, salary)
+        VALUES 
+            ('John', 'Doe', 'john.doe@example.com', '2023-01-15', 'Engineering', 75000.00),
+            ('Jane', 'Smith', 'jane.smith@example.com', '2023-02-01', 'Marketing', 65000.00),
+            ('Bob', 'Johnson', 'bob.johnson@example.com', '2023-03-10', 'Sales', 60000.00)
+        ON CONFLICT DO NOTHING;
+        """
+        cursor.execute(insert_data_query)
+        
         # Commit the changes
         conn.commit()
 
@@ -50,28 +61,28 @@ def lambda_handler(event, context):
         # ✅ Get column names
         column_names = [desc[0] for desc in cursor.description]
 
-        # ✅ Convert data to CSV
-        csv_buffer = StringIO()
-        csv_writer = csv.writer(csv_buffer)
-        csv_writer.writerow(column_names)  # Write header
-        csv_writer.writerows(rows)  # Write data
+        # # ✅ Convert data to CSV
+        # csv_buffer = StringIO()
+        # csv_writer = csv.writer(csv_buffer)
+        # csv_writer.writerow(column_names)  # Write header
+        # csv_writer.writerows(rows)  # Write data
 
-        # ✅ Upload CSV to S3
-        s3_client = boto3.client("s3")
-        s3_client.put_object(
-            Bucket=S3_BUCKET,
-            Key=S3_FILE_NAME,
-            Body=csv_buffer.getvalue()
-        )
+        # # ✅ Upload CSV to S3
+        # s3_client = boto3.client("s3")
+        # s3_client.put_object(
+        #     Bucket=S3_BUCKET,
+        #     Key=S3_FILE_NAME,
+        #     Body=csv_buffer.getvalue()
+        # )
 
-        # ✅ Close connections
-        cursor.close()
-        conn.close()
+        # # ✅ Close connections
+        # cursor.close()
+        # conn.close()
 
-        return {
-            "statusCode": 200,
-            "body": json.dumps(f"Data successfully exported to s3://{S3_BUCKET}/{S3_FILE_NAME}")
-        }
+        # return {
+        #     "statusCode": 200,
+        #     "body": json.dumps(f"Data successfully exported to s3://{S3_BUCKET}/{S3_FILE_NAME}")
+        # }
 
     except Exception as e:
         return {
