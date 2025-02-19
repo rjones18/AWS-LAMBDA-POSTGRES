@@ -1,31 +1,37 @@
 import json
 import boto3
-import pg8000
+import psycopg
 import csv
 import os
 from io import StringIO
+import logging
 
-# Environment variables for DB connection
-DB_HOST = os.getenv("DB_HOST")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-S3_BUCKET = os.getenv("S3_BUCKET")
-S3_FILE_NAME = "rds_data.csv"
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
+    logger.info("Starting Lambda execution")
+    logger.info(f"Environment variables: DB_HOST={os.getenv('DB_HOST')}, DB_NAME={os.getenv('DB_NAME')}")
+    
     try:
-        # ✅ Connect to PostgreSQL RDS using pg8000
-        conn = pg8000.connect(
-            host=DB_HOST,
-            database=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            ssl_context=True  # ✅ Ensures SSL connection
+        # Log connection attempt
+        logger.info(f"Attempting to connect to database at {os.getenv('DB_HOST')}")
+        
+        conn = psycopg.connect(
+            host=os.getenv("DB_HOST"),
+            port=5432,
+            dbname=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            sslmode='require'
         )
+        
+        logger.info("Database connection successful")
         cursor = conn.cursor()
 
-        # Create table if it doesn't exist
+        # Log table creation
+        logger.info("Creating table if not exists")
         create_table_query = """
         CREATE TABLE IF NOT EXISTS employees (
             id SERIAL PRIMARY KEY,
@@ -39,7 +45,8 @@ def lambda_handler(event, context):
         """
         cursor.execute(create_table_query)
         
-        # Insert sample data
+        # Log data insertion
+        logger.info("Inserting sample data")
         insert_data_query = """
         INSERT INTO employees (first_name, last_name, email, hire_date, department, salary)
         VALUES 
@@ -49,43 +56,64 @@ def lambda_handler(event, context):
         ON CONFLICT DO NOTHING;
         """
         cursor.execute(insert_data_query)
-        
-        # Commit the changes
         conn.commit()
+        logger.info("Data inserted successfully")
 
-        # ✅ Query the database
-        query = "SELECT * FROM employees;"  # Change 'your_table' to your actual table name
+        # Log query execution
+        logger.info("Executing SELECT query")
+        query = "SELECT * FROM employees;"
         cursor.execute(query)
         rows = cursor.fetchall()
+        logger.info(f"Query returned {len(rows)} rows")
 
-        # ✅ Get column names
+        # Get column names
         column_names = [desc[0] for desc in cursor.description]
+        logger.info(f"Column names: {column_names}")
 
-        # # ✅ Convert data to CSV
-        # csv_buffer = StringIO()
-        # csv_writer = csv.writer(csv_buffer)
-        # csv_writer.writerow(column_names)  # Write header
-        # csv_writer.writerows(rows)  # Write data
+        # Convert to CSV
+        csv_buffer = StringIO()
+        csv_writer = csv.writer(csv_buffer)
+        csv_writer.writerow(column_names)
+        csv_writer.writerows(rows)
+        
+        # Log S3 upload
+        logger.info(f"Uploading to S3 bucket: {os.getenv('S3_BUCKET')}")
+        s3_client = boto3.client("s3")
+        s3_client.put_object(
+            Bucket=os.getenv("S3_BUCKET"),
+            Key="rds_data.csv",
+            Body=csv_buffer.getvalue()
+        )
+        logger.info("S3 upload complete")
 
-        # # ✅ Upload CSV to S3
-        # s3_client = boto3.client("s3")
-        # s3_client.put_object(
-        #     Bucket=S3_BUCKET,
-        #     Key=S3_FILE_NAME,
-        #     Body=csv_buffer.getvalue()
-        # )
+        # Close connections
+        cursor.close()
+        conn.close()
+        logger.info("Database connections closed")
 
-        # # ✅ Close connections
-        # cursor.close()
-        # conn.close()
-
-        # return {
-        #     "statusCode": 200,
-        #     "body": json.dumps(f"Data successfully exported to s3://{S3_BUCKET}/{S3_FILE_NAME}")
-        # }
+        response = {
+            "statusCode": 200,
+            "body": json.dumps({
+                "message": f"Data exported to S3 bucket {os.getenv('S3_BUCKET')}",
+                "rows_processed": len(rows)
+            })
+        }
+        logger.info(f"Returning response: {response}")
+        return response
 
     except Exception as e:
-        return {
+        logger.error(f"Error occurred: {str(e)}", exc_info=True)
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+            
+        error_response = {
             "statusCode": 500,
-            "body": json.dumps(str(e))
+            "body": json.dumps({
+                "error": str(e),
+                "type": type(e).__name__
+            })
         }
+        logger.info(f"Returning error response: {error_response}")
+        return error_response
