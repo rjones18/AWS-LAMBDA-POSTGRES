@@ -20,38 +20,45 @@ S3_FILE_NAME = "rds_data.csv"
 def lambda_handler(event, context):
     try:
         logger.info(f"Connecting to PostgreSQL: {DB_HOST}")
-        # ✅ Connect to PostgreSQL RDS using pg8000
         conn = pg8000.connect(
             host=DB_HOST,
             database=DB_NAME,
             user=DB_USER,
             password=DB_PASSWORD,
-            ssl_context=True  # ✅ Ensures SSL connection
+            ssl_context=True
         )
         cursor = conn.cursor()
 
         logger.info("Querying database...")
-        query = "SELECT * FROM employees;"  # ✅ Only query data
+        query = "SELECT * FROM employees;"
         cursor.execute(query)
         rows = cursor.fetchall()
 
-        # ✅ Get column names
         column_names = [desc[0] for desc in cursor.description]
         logger.info(f"Found {len(rows)} rows in 'employees' table.")
 
-        # ✅ Save to temporary file in Lambda's /tmp directory
         tmp_file_path = "/tmp/rds_data.csv"
         with open(tmp_file_path, "w", newline="") as f:
             csv_writer = csv.writer(f)
-            csv_writer.writerow(column_names)  # Write headers
-            csv_writer.writerows(rows)  # Write rows
+            csv_writer.writerow(column_names)
+            csv_writer.writerows(rows)
 
-        # ✅ Upload to S3
         s3_client = boto3.client("s3")
-        s3_client.upload_file(tmp_file_path, S3_BUCKET, S3_FILE_NAME)
+
+        # ✅ Multipart Upload for large files
+        file_size = os.path.getsize(tmp_file_path)
+        logger.info(f"CSV file size: {file_size} bytes")
+
+        if file_size > 5 * 1024 * 1024:  # If file > 5MB, use multipart upload
+            logger.info("Using multipart upload for large file...")
+            transfer_config = boto3.s3.transfer.TransferConfig(multipart_threshold=5 * 1024 * 1024)
+            s3_client.upload_file(tmp_file_path, S3_BUCKET, S3_FILE_NAME, Config=transfer_config)
+        else:
+            logger.info("Using standard S3 upload...")
+            s3_client.upload_file(tmp_file_path, S3_BUCKET, S3_FILE_NAME)
+
         logger.info(f"Successfully uploaded CSV to s3://{S3_BUCKET}/{S3_FILE_NAME}")
 
-        # ✅ Close connections
         cursor.close()
         conn.close()
 
@@ -72,5 +79,6 @@ def lambda_handler(event, context):
                 "type": type(e).__name__
             })
         }
+
 
 
