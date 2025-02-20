@@ -4,6 +4,7 @@ import pg8000
 import csv
 import os
 import logging
+import botocore.exceptions
 
 # Set up logging
 logger = logging.getLogger()
@@ -16,6 +17,9 @@ DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 S3_BUCKET = os.getenv("S3_BUCKET")
 S3_FILE_NAME = "rds_data.csv"
+
+# ✅ Set S3 upload timeout
+S3_CLIENT = boto3.client("s3", config=boto3.session.Config(connect_timeout=5, read_timeout=5, retries={'max_attempts': 3}))
 
 def lambda_handler(event, context):
     try:
@@ -43,21 +47,23 @@ def lambda_handler(event, context):
             csv_writer.writerow(column_names)
             csv_writer.writerows(rows)
 
-        s3_client = boto3.client("s3")
-
-        # ✅ Multipart Upload for large files
+        # ✅ Check file size before upload
         file_size = os.path.getsize(tmp_file_path)
         logger.info(f"CSV file size: {file_size} bytes")
 
-        if file_size > 5 * 1024 * 1024:  # If file > 5MB, use multipart upload
-            logger.info("Using multipart upload for large file...")
-            transfer_config = boto3.s3.transfer.TransferConfig(multipart_threshold=5 * 1024 * 1024)
-            s3_client.upload_file(tmp_file_path, S3_BUCKET, S3_FILE_NAME, Config=transfer_config)
-        else:
-            logger.info("Using standard S3 upload...")
-            s3_client.upload_file(tmp_file_path, S3_BUCKET, S3_FILE_NAME)
+        # ✅ Use Multipart Upload for large files
+        transfer_config = boto3.s3.transfer.TransferConfig(multipart_threshold=5 * 1024 * 1024)
 
-        logger.info(f"Successfully uploaded CSV to s3://{S3_BUCKET}/{S3_FILE_NAME}")
+        try:
+            logger.info("Uploading to S3...")
+            S3_CLIENT.upload_file(tmp_file_path, S3_BUCKET, S3_FILE_NAME, Config=transfer_config)
+            logger.info(f"Successfully uploaded CSV to s3://{S3_BUCKET}/{S3_FILE_NAME}")
+        except botocore.exceptions.EndpointConnectionError as e:
+            logger.error("❌ Unable to reach S3! Check VPC settings or S3 VPC Endpoint.", exc_info=True)
+            raise
+        except botocore.exceptions.ClientError as e:
+            logger.error(f"❌ AWS S3 Upload Failed: {e}", exc_info=True)
+            raise
 
         cursor.close()
         conn.close()
@@ -79,6 +85,3 @@ def lambda_handler(event, context):
                 "type": type(e).__name__
             })
         }
-
-
-
