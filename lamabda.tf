@@ -29,7 +29,7 @@ resource "aws_iam_policy" "lambda_policy" {
       {
         Effect   = "Allow"
         Action   = ["s3:PutObject"]
-        Resource = "arn:aws:s3:::${var.s3_bucket_name}/*"
+        Resource = ["arn:aws:s3:::${var.s3_bucket_name}/*", "arn:aws:s3:::${var.s3_bucket_name}/"]
       },
       {
         Effect   = "Allow"

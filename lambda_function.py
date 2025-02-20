@@ -46,22 +46,22 @@ def lambda_handler(event, context):
             csv_writer.writerow(column_names)  # Write headers
             csv_writer.writerows(rows)  # Write rows
 
-        # # ✅ Upload to S3
-        # s3_client = boto3.client("s3")
-        # s3_client.upload_file(tmp_file_path, S3_BUCKET, S3_FILE_NAME)
-        # logger.info(f"Successfully uploaded CSV to s3://{S3_BUCKET}/{S3_FILE_NAME}")
+        # ✅ Upload to S3
+        s3_client = boto3.client("s3")
+        s3_client.upload_file(tmp_file_path, S3_BUCKET, S3_FILE_NAME)
+        logger.info(f"Successfully uploaded CSV to s3://{S3_BUCKET}/{S3_FILE_NAME}")
 
-        # # ✅ Close connections
-        # cursor.close()
-        # conn.close()
+        # ✅ Close connections
+        cursor.close()
+        conn.close()
 
-        # return {
-        #     "statusCode": 200,
-        #     "body": json.dumps({
-        #         "message": f"Data exported to s3://{S3_BUCKET}/{S3_FILE_NAME}",
-        #         "rows_processed": len(rows)
-        #     })
-        # }
+        return {
+            "statusCode": 200,
+            "body": json.dumps({
+                "message": f"Data exported to s3://{S3_BUCKET}/{S3_FILE_NAME}",
+                "rows_processed": len(rows)
+            })
+        }
 
     except Exception as e:
         logger.error(f"Error: {str(e)}", exc_info=True)
