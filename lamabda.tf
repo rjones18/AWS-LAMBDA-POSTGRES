@@ -31,6 +31,11 @@ resource "aws_iam_policy" "lambda_policy" {
         Action   = ["s3:PutObject", "s3:PutObjectAcl"]
         Resource = ["arn:aws:s3:::${var.s3_bucket_name}/*", "arn:aws:s3:::${var.s3_bucket_name}/"]
       },
+            {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = "arn:aws:s3:::${var.s3_bucket_name}"
+      },
       {
         Effect   = "Allow"
         Action   = ["rds-db:connect"]
