@@ -1,8 +1,10 @@
 import json
 import boto3
 import pg8000
+import csv
 import os
 import logging
+import botocore.exceptions
 
 # Set up logging
 logger = logging.getLogger()
@@ -13,14 +15,16 @@ DB_HOST = os.getenv("DB_HOST")
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
-S3_BUCKET = os.getenv("S3_BUCKET")
-IAM_ROLE_ARN = os.getenv("IAM_ROLE_ARN")  # RDS IAM Role for S3 export
+S3_BUCKET_NAME = os.getenv("S3_BUCKET")
+S3_FILE_NAME = "rds_data.csv"
+
+# ✅ Initialize S3 Resource
+s3 = boto3.resource("s3")
+bucket = s3.Bucket(S3_BUCKET_NAME)
 
 def lambda_handler(event, context):
     try:
         logger.info(f"Connecting to PostgreSQL: {DB_HOST}")
-        
-        # ✅ Connect to PostgreSQL
         conn = pg8000.connect(
             host=DB_HOST,
             database=DB_NAME,
@@ -30,19 +34,42 @@ def lambda_handler(event, context):
         )
         cursor = conn.cursor()
 
-        # ✅ Run SQL query to export data directly to S3
-        s3_file_path = f"s3://{S3_BUCKET}/employees_export.csv"
+        logger.info("Querying database...")
+        query = "SELECT * FROM employees;"
+        cursor.execute(query)
+        rows = cursor.fetchall()
 
-        export_query = f"""
-        COPY (SELECT * FROM employees)
-        TO '{s3_file_path}'
-        WITH (FORMAT CSV, HEADER TRUE, IAM_ROLE '{IAM_ROLE_ARN}');
-        """
+        column_names = [desc[0] for desc in cursor.description]
+        logger.info(f"Found {len(rows)} rows in 'employees' table.")
 
-        logger.info(f"Executing SQL Export to {s3_file_path}")
-        cursor.execute(export_query)
-        conn.commit()
-        logger.info("✅ Export Successful!")
+        # ✅ Write data to /tmp directory
+        tmp_file_path = "/tmp/rds_data.csv"
+        with open(tmp_file_path, "w", newline="") as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerow(column_names)
+            csv_writer.writerows(rows)
+
+        # ✅ Check if CSV file exists before uploading
+        if not os.path.exists(tmp_file_path):
+            logger.error(f"❌ CSV file not found: {tmp_file_path}")
+            return {
+                "statusCode": 500,
+                "body": json.dumps({"error": "CSV file not found before upload."})
+            }
+
+        # ✅ Use Multipart Upload for large files
+        transfer_config = boto3.s3.transfer.TransferConfig(multipart_threshold=5 * 1024 * 1024)
+
+        try:
+            logger.info("Uploading to S3...")
+            bucket.upload_file(tmp_file_path, S3_FILE_NAME)
+            logger.info(f"✅ Successfully uploaded CSV to s3://{S3_BUCKET_NAME}/{S3_FILE_NAME}")
+        except botocore.exceptions.EndpointConnectionError as e:
+            logger.error("❌ Unable to reach S3! Check VPC settings or S3 VPC Endpoint.", exc_info=True)
+            raise
+        except botocore.exceptions.ClientError as e:
+            logger.error(f"❌ AWS S3 Upload Failed: {e}", exc_info=True)
+            raise
 
         # ✅ Close database connection
         cursor.close()
@@ -51,12 +78,13 @@ def lambda_handler(event, context):
         return {
             "statusCode": 200,
             "body": json.dumps({
-                "message": f"Data successfully exported to {s3_file_path}"
+                "message": f"Data exported to s3://{S3_BUCKET_NAME}/{S3_FILE_NAME}",
+                "rows_processed": len(rows)
             })
         }
 
     except Exception as e:
-        logger.error(f"❌ Error: {str(e)}", exc_info=True)
+        logger.error(f"❌ General Error: {str(e)}", exc_info=True)
         return {
             "statusCode": 500,
             "body": json.dumps({"error": str(e)})
