@@ -62,7 +62,7 @@ def lambda_handler(event, context):
 
         try:
             logger.info("Uploading to S3...")
-            bucket.upload_file(tmp_file_path, S3_FILE_NAME)
+            bucket.upload_file(tmp_file_path, S3_FILE_NAME, Config=transfer_config)
             logger.info(f"✅ Successfully uploaded CSV to s3://{S3_BUCKET_NAME}/{S3_FILE_NAME}")
         except botocore.exceptions.EndpointConnectionError as e:
             logger.error("❌ Unable to reach S3! Check VPC settings or S3 VPC Endpoint.", exc_info=True)
@@ -89,5 +89,4 @@ def lambda_handler(event, context):
             "statusCode": 500,
             "body": json.dumps({"error": str(e)})
         }
-
 
