@@ -102,18 +102,18 @@ data "archive_file" "lambda_zip" {
   output_path = "lambda_function.zip"
 }
 
-# resource "aws_security_group" "lambda_sg" {
-#   name        = "lambda_sg"
-#   description = "Security group for Lambda function"
-#   vpc_id      = "vpc-00341f3387967cf99"
+resource "aws_security_group" "lambda_sg" {
+  name        = "lambda_sg"
+  description = "Security group for Lambda function"
+  vpc_id      = "vpc-09614cd61a9ffa007"
 
-#   egress {
-#     from_port   = 0
-#     to_port     = 0
-#     protocol    = "-1"
-#     cidr_blocks = ["0.0.0.0/0"]
-#   }
-# }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
 
 
 resource "aws_lambda_function" "rds_to_s3" {
@@ -128,10 +128,10 @@ resource "aws_lambda_function" "rds_to_s3" {
 
   layers = [aws_lambda_layer_version.pg8000_layer.arn]
   
-  # vpc_config {
-  #   subnet_ids         = ["subnet-0d529b400ecb2a00d","subnet-0a1f46ad09f96fab5"] # Add your private subnet IDs
-  #   security_group_ids = [aws_security_group.lambda_sg.id]
-  # }
+  vpc_config {
+    subnet_ids         = ["subnet-02a65c02202c7c17f","subnet-008196eb2a85dec81"] # Add your private subnet IDs
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
 
   environment {
     variables = {
