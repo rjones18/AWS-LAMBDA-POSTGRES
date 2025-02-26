@@ -48,22 +48,13 @@ jobs:
             python3 -m pip install --upgrade pip
 
       - run:
-          name: Build psycopg Lambda Layer
+          name: Make Directory for Lambda Layer psycopg Lambda Layer
           command: |
             mkdir -p python
-            python3 -m pip install --platform manylinux2014_x86_64 \
-              --implementation cp \
-              --python-version 3.10 \
-              --only-binary=:all: \
-              --upgrade \
-              "psycopg[binary]" -t python  # ✅ Install psycopg
-
-            # ✅ Verify structure
-            ls -lh python/
 
       - run:
           name: Package Lambda Layer
-          command: zip -r psycopg-layer.zip python
+          command: mv psycopg3_3.12.zip python
 
       - persist_to_workspace:
           root: .
