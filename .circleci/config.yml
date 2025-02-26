@@ -47,19 +47,19 @@ jobs:
             yum install -y gcc python3 python3-devel python3-pip zip tar gzip
             python3 -m pip install --upgrade pip
 
-      - run:
-          name: Make Directory for Lambda Layer psycopg Lambda Layer
-          command: |
-            mkdir -p python
+      # - run:
+      #     name: Make Directory for Lambda Layer psycopg Lambda Layer
+      #     command: |
+      #       mkdir -p python
 
-      - run:
-          name: Package Lambda Layer
-          command: mv psycopg3_3.12.zip python
+      # - run:
+      #     name: Package Lambda Layer
+      #     command: mv psycopg3_3.12.zip python
 
-      - persist_to_workspace:
-          root: .
-          paths:
-            - psycopg-layer.zip  # Store the zip file for Terraform
+      # - persist_to_workspace:
+      #     root: .
+      #     paths:
+      #       - psycopg3_3.12.zip  # Store the zip file for Terraform
 
   terraform-deploy:
     docker:
