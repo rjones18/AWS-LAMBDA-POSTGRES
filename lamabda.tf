@@ -161,7 +161,7 @@ resource "aws_lambda_function" "rds_to_s3" {
   timeout         = 30
   memory_size     = 1024
 
-  layers = [aws_lambda_layer_version.pg8000_layer.arn]
+  layers = [aws_lambda_layer_version.pg8000_layer.arn, aws_lambda_layer_version.psycopg3_layer.arn]
   
   vpc_config {
     subnet_ids         = ["subnet-02a65c02202c7c17f","subnet-008196eb2a85dec81"] # Add your private subnet IDs
