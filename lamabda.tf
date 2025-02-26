@@ -105,9 +105,9 @@ resource "aws_s3_object" "lambda_layer" {
 # ✅ Upload psycopg3 Lambda Layer to S3
 resource "aws_s3_object" "lambda_layer2" {
   bucket = aws_s3_bucket.lambda_layers_bucket.id
-  key    = "psycopg-layer.zip"
-  source = "psycopg-layer.zip"
-  etag   = filemd5("psycopg-layer.zip")
+  key    = "psycopg3_3.12.zip"
+  source = "psycopg3_3.12.zip"
+  etag   = filemd5("psycopg3_3.12.zip")
 }
 
 # ✅ Lambda Layer Definition
