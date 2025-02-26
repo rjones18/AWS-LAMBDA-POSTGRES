@@ -73,6 +73,22 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
 }
 
 
+# In the source account (Account A) where the Lambda's IAM role is defined
+
+resource "aws_iam_role_policy" "lambda_assume_role_policy" {
+  name   = "LambdaAssumeRolePolicy"
+  role   = "lambda_rds_to_s3_role"  # Replace with your Lambda's IAM Role
+  policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
+}
+
+data "aws_iam_policy_document" "lambda_assume_role_policy" {
+  statement {
+    actions   = ["sts:AssumeRole"]
+    resources = ["arn:aws:iam::614768946157:role/CrossAccountRole"]  # Replace with the cross-account role ARN
+  }
+}
+
+
 # ✅ S3 Bucket for Lambda Layer Storage
 resource "aws_s3_bucket" "lambda_layers_bucket" {
   bucket = var.lambda_layer_s3_bucket
@@ -86,6 +102,14 @@ resource "aws_s3_object" "lambda_layer" {
   etag   = filemd5("pg8000-layer.zip")
 }
 
+# ✅ Upload psycopg3 Lambda Layer to S3
+resource "aws_s3_object" "lambda_layer2" {
+  bucket = aws_s3_bucket.lambda_layers_bucket.id
+  key    = "psycopg-layer.zip"
+  source = "psycopg-layer.zip"
+  etag   = filemd5("psycopg-layer.zip")
+}
+
 # ✅ Lambda Layer Definition
 resource "aws_lambda_layer_version" "pg8000_layer" {
   layer_name          = "pg8000-layer"
@@ -95,12 +119,23 @@ resource "aws_lambda_layer_version" "pg8000_layer" {
   description        = "pg8000 Lambda Layer for Amazon Linux 2"
 }
 
+# ✅ Lambda Layer Definition
+resource "aws_lambda_layer_version" "psycopg3_layer" {
+  layer_name          = "psycopg3-layer"
+  s3_bucket          = aws_s3_bucket.lambda_layers_bucket.id
+  s3_key             = aws_s3_object.lambda_layer2.key
+  compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11"]
+  description        = "psycopg3 Lambda Layer for Amazon Linux 2"
+}
+
 # ✅ Zip and Deploy Lambda Function
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_file = "lambda_function.py"
   output_path = "lambda_function.zip"
 }
+
+
 
 resource "aws_security_group" "lambda_sg" {
   name        = "lambda_sg"
