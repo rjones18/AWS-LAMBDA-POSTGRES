@@ -51,7 +51,7 @@ jobs:
           name: Build psycopg Lambda Layer
           command: |
             mkdir -p python
-            python3 -m pip install "psycopg [binary,pool]" -t python
+            python3 -m pip install "psycopg[c]" -t python
             # ✅ Copy libpq to the layer
             mkdir -p lib
             cp /usr/lib64/libpq.so* lib/
