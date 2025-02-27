@@ -51,13 +51,7 @@ jobs:
           name: Build psycopg Lambda Layer
           command: |
             mkdir -p python
-            python3 -m pip install --platform manylinux2014_x86_64 \
-              --implementation cp \
-              --python-version 3.10 \
-              --only-binary=:all: \
-              --upgrade \
-              "psycopg[binary]" -t python
-
+            python3 -m pip install "psycopg[binary]==3.1.8" -t python
             # ✅ Copy libpq to the layer
             mkdir -p lib
             cp /usr/lib64/libpq.so* lib/
