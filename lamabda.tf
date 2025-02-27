@@ -105,9 +105,9 @@ resource "aws_s3_object" "lambda_layer" {
 # ✅ Upload psycopg3 Lambda Layer to S3
 resource "aws_s3_object" "lambda_layer2" {
   bucket = aws_s3_bucket.lambda_layers_bucket.id
-  key    = "psycopg3_3.12.zip"
-  source = "psycopg3_3.12.zip"
-  etag   = filemd5("psycopg3_3.12.zip")
+  key    = "psycopg-layer.zip"
+  source = "psycopg-layer.zip"
+  etag   = filemd5("psycopg-layer.zip")
 }
 
 # ✅ Lambda Layer Definition
@@ -121,7 +121,7 @@ resource "aws_lambda_layer_version" "pg8000_layer" {
 
 # ✅ Lambda Layer Definition
 resource "aws_lambda_layer_version" "psycopg3_layer" {
-  layer_name          = "psycopg3-layer"
+  layer_name          = "psycopg-layer"
   s3_bucket          = aws_s3_bucket.lambda_layers_bucket.id
   s3_key             = aws_s3_object.lambda_layer2.key
   compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11"]
