@@ -56,7 +56,8 @@ jobs:
               --python-version 3.10 \
               --only-binary=:all: \
               --upgrade \
-              "psycopg[binary]" -t python  # ✅ Install psycopg
+              "psycopg[binary]" -t python  # ✅ Install psycopg \
+              --no-deps
 
             # ✅ Verify structure
             ls -lh python/
