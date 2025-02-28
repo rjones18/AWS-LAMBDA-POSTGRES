@@ -52,12 +52,14 @@ jobs:
           command: |
             mkdir -p python
             python3 -m pip install --platform manylinux2014_x86_64 \
-                --target=package \
+                --target=python \
                 --implementation cp \
                 --python-version 3.9 \
                 --only-binary=:all: \
                 --upgrade \
-                "psycopg[binary]==3.0" -t /python
+                "psycopg[binary]==3.1.8,<3.3" -t /python
+            # ✅ Remove unnecessary dependencies explicitly
+            rm -rf python/backports*
             # ✅ Copy libpq to the layer
             # mkdir -p lib
             # cp /usr/lib64/libpq.so* lib/
