@@ -60,16 +60,16 @@ jobs:
                 "psycopg[binary]==3.1.8,<3.3" \
                 --no-deps  # ✅ Ignore unnecessary dependencies like backports.zoneinfo
             # ✅ Copy libpq to the layer
-            # mkdir -p lib
-            # cp /usr/lib64/libpq.so* lib/
+            mkdir -p lib
+            cp /usr/lib64/libpq.so* lib/
 
             # # ✅ Verify structure
             ls -lh python/
-            # ls -lh lib/
+            ls -lh lib/
 
       - run:
           name: Package Lambda Layer
-          command: zip -r psycopg-layer.zip python
+          command: zip -r psycopg-layer.zip python lib
 
       - persist_to_workspace:
           root: .
