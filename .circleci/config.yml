@@ -44,28 +44,20 @@ jobs:
           name: Install System Dependencies
           command: |
             yum update -y
-            yum install -y gcc python3 python3-devel python3-pip zip tar gzip postgresql-libs postgresql-devel libpq5
+            yum install -y gcc python3 python3-devel python3-pip zip tar gzip postgresql-libs postgresql-devel psql
             python3 -m pip install --upgrade pip
 
       - run:
           name: Build psycopg Lambda Layer
           command: |
             mkdir -p python
-            # python3 -m pip install --platform manylinux2014_x86_64 \
-            #     --target=python \
-            #     --implementation cp \
-            #     --python-version 3.9 \
-            #     --only-binary=:all: \
-            #     --upgrade \
-            #     "psycopg[binary]==3.1.8,<3.3" \
-
             python3 -m pip install --platform manylinux2014_x86_64 \
-                --target=package \
+                --target=python \
                 --implementation cp \
-                --python-version 3.10 \
+                --python-version 3.9 \
                 --only-binary=:all: \
                 --upgrade \
-                "psycopg[binary]==3.1.8,<3.3" -t /python \
+                "psycopg[binary]==3.1.8,<3.3" \
                 --no-deps  # ✅ Ignore unnecessary dependencies like backports.zoneinfo
             # ✅ Copy libpq to the layer
             mkdir -p lib
@@ -73,11 +65,10 @@ jobs:
 
             # # ✅ Verify structure
             ls -lh python/
-            ls -lh lib/
 
       - run:
           name: Package Lambda Layer
-          command: zip -r psycopg-layer.zip python lib
+          command: zip -r psycopg-layer.zip python
 
       - persist_to_workspace:
           root: .
