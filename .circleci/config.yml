@@ -57,15 +57,14 @@ jobs:
                 --python-version 3.9 \
                 --only-binary=:all: \
                 --upgrade \
-                "psycopg[binary]==3.1.8,<3.3" -t /python
-            # ✅ Remove unnecessary dependencies explicitly
-            rm -rf python/backports*
+                "psycopg[binary]==3.1.8,<3.3" \
+                --no-deps  # ✅ Ignore unnecessary dependencies like backports.zoneinfo
             # ✅ Copy libpq to the layer
             # mkdir -p lib
             # cp /usr/lib64/libpq.so* lib/
 
             # # ✅ Verify structure
-            # ls -lh python/
+            ls -lh python/
             # ls -lh lib/
 
       - run:
