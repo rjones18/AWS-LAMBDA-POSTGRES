@@ -94,13 +94,13 @@ resource "aws_s3_bucket" "lambda_layers_bucket" {
   bucket = var.lambda_layer_s3_bucket
 }
 
-# ✅ Upload pg8000 Lambda Layer to S3
-resource "aws_s3_object" "lambda_layer" {
-  bucket = aws_s3_bucket.lambda_layers_bucket.id
-  key    = "pg8000-layer.zip"
-  source = "pg8000-layer.zip"
-  etag   = filemd5("pg8000-layer.zip")
-}
+# # ✅ Upload pg8000 Lambda Layer to S3
+# resource "aws_s3_object" "lambda_layer" {
+#   bucket = aws_s3_bucket.lambda_layers_bucket.id
+#   key    = "pg8000-layer.zip"
+#   source = "pg8000-layer.zip"
+#   etag   = filemd5("pg8000-layer.zip")
+# }
 
 # ✅ Upload psycopg3 Lambda Layer to S3
 resource "aws_s3_object" "lambda_layer2" {
@@ -110,14 +110,14 @@ resource "aws_s3_object" "lambda_layer2" {
   etag   = filemd5("psycopg-layer.zip")
 }
 
-# ✅ Lambda Layer Definition
-resource "aws_lambda_layer_version" "pg8000_layer" {
-  layer_name          = "pg8000-layer"
-  s3_bucket          = aws_s3_bucket.lambda_layers_bucket.id
-  s3_key             = aws_s3_object.lambda_layer.key
-  compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11"]
-  description        = "pg8000 Lambda Layer for Amazon Linux 2"
-}
+# # ✅ Lambda Layer Definition
+# resource "aws_lambda_layer_version" "pg8000_layer" {
+#   layer_name          = "pg8000-layer"
+#   s3_bucket          = aws_s3_bucket.lambda_layers_bucket.id
+#   s3_key             = aws_s3_object.lambda_layer.key
+#   compatible_runtimes = ["python3.8", "python3.9", "python3.10", "python3.11"]
+#   description        = "pg8000 Lambda Layer for Amazon Linux 2"
+# }
 
 # ✅ Lambda Layer Definition
 resource "aws_lambda_layer_version" "psycopg3_layer" {
@@ -161,7 +161,7 @@ resource "aws_lambda_function" "rds_to_s3" {
   timeout         = 30
   memory_size     = 1024
 
-  layers = [aws_lambda_layer_version.pg8000_layer.arn, aws_lambda_layer_version.psycopg3_layer.arn]
+  layers = [aws_lambda_layer_version.psycopg3_layer.arn]
   
   vpc_config {
     subnet_ids         = ["subnet-02a65c02202c7c17f","subnet-008196eb2a85dec81"] # Add your private subnet IDs
