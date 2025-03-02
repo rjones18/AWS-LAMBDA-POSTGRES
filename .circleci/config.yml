@@ -104,9 +104,9 @@ jobs:
 workflows:
   build-and-deploy:
     jobs:
-      - build-pg8000-layer
-      - build-psycopg-layer
-      - terraform-deploy:
-          requires:
-            - build-pg8000-layer
-            - build-psycopg-layer  # Terraform runs only after both Lambda Layers are built
+      # - build-pg8000-layer
+      # - build-psycopg-layer
+      - terraform-deploy
+          # requires:
+          #   - build-pg8000-layer
+          #   - build-psycopg-layer  # Terraform runs only after both Lambda Layers are built
