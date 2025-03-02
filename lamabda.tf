@@ -176,6 +176,7 @@ resource "aws_lambda_function" "rds_to_s3" {
       DB_PASSWORD = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
       S3_BUCKET   = aws_s3_bucket.lambda_s3.bucket
       PYTHONPATH = "/opt/python"  # ✅ Ensure Lambda can import pg8000
+      LD_LIBRARY_PATH = "/opt/lib"
     }
   }
 

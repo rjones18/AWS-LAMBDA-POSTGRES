@@ -10,6 +10,8 @@ import botocore.exceptions
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+os.environ["LD_LIBRARY_PATH"] = os.environ.get("LD_LIBRARY_PATH", "") + ":/opt/lib"
+
 # Environment variables for DB connection
 DB_HOST = os.getenv("DB_HOST")
 DB_NAME = os.getenv("DB_NAME")
