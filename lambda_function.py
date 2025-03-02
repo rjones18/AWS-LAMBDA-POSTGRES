@@ -1,6 +1,6 @@
 import json
 import boto3
-import pg8000
+import psycopg
 import csv
 import os
 import logging
@@ -9,8 +9,6 @@ import botocore.exceptions
 # Set up logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-os.environ["LD_LIBRARY_PATH"] = os.environ.get("LD_LIBRARY_PATH", "") + ":/opt/lib"
 
 # Environment variables for DB connection
 DB_HOST = os.getenv("DB_HOST")
@@ -27,14 +25,15 @@ bucket = s3.Bucket(S3_BUCKET_NAME)
 def lambda_handler(event, context):
     try:
         logger.info(f"Connecting to PostgreSQL: {DB_HOST}")
-        conn = pg8000.connect(
+        conn = psycopg.connect(
             host=DB_HOST,
-            database=DB_NAME,
+            dbname=DB_NAME,
             user=DB_USER,
             password=DB_PASSWORD,
-            ssl_context=True
+            sslmode="require"
         )
         cursor = conn.cursor()
+
         # ✅ Ensure `employees` table exists
         logger.info("Ensuring 'employees' table exists...")
         create_table_query = """
@@ -69,7 +68,7 @@ def lambda_handler(event, context):
         cursor.execute(query)
         rows = cursor.fetchall()
 
-        column_names = [desc[0] for desc in cursor.description]
+        column_names = [desc.name for desc in cursor.description]
         logger.info(f"Found {len(rows)} rows in 'employees' table.")
 
         # ✅ Write data to /tmp directory
@@ -119,4 +118,3 @@ def lambda_handler(event, context):
             "statusCode": 500,
             "body": json.dumps({"error": str(e)})
         }
-
