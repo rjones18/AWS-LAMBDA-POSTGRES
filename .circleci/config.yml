@@ -1,38 +1,6 @@
 version: 2.1
 
 jobs:
-  build-pg8000-layer:
-    docker:
-      - image: amazonlinux:2  # Amazon Linux 2 for AWS Lambda compatibility
-
-    steps:
-      - checkout  # Checkout repository code
-
-      - run:
-          name: Install System Dependencies
-          command: |
-            yum update -y
-            yum install -y gcc python3 python3-devel python3-pip zip tar gzip
-            python3 -m pip install --upgrade pip
-
-      - run:
-          name: Build pg8000 Lambda Layer
-          command: |
-            mkdir -p python
-            python3 -m pip install "pg8000" -t python  # ✅ Install pg8000
-
-            # ✅ Verify structure
-            ls -lh python/
-
-      - run:
-          name: Package Lambda Layer
-          command: zip -r pg8000-layer.zip python
-
-      - persist_to_workspace:
-          root: .
-          paths:
-            - pg8000-layer.zip  # Store the zip file for Terraform
-
   build-psycopg-layer:
     docker:
       - image: amazonlinux:2  # Amazon Linux 2 for AWS Lambda compatibility
@@ -44,30 +12,30 @@ jobs:
           name: Install System Dependencies
           command: |
             yum update -y
-            yum install -y gcc python3 python3-devel python3-pip zip tar gzip postgresql-libs postgresql-devel libpq5 psql
+            yum install -y gcc python3 python3-devel python3-pip zip tar gzip postgresql-libs postgresql-devel
             python3 -m pip install --upgrade pip
 
       - run:
-          name: Build psycopg Lambda Layer
+          name: Build psycopg Layer
           command: |
-            mkdir -p python
-            python3 -m pip install "psycopg [binary]" -t python
-            # ✅ Copy libpq to the layer
-            mkdir -p lib
-            cp /usr/lib64/libpq.so* lib/
+            # Create a directory for the layer
+            mkdir -p ~/layer/python
+            # Install psycopg with its binary distribution into the layer's python folder
+            python3 -m pip install "psycopg[binary]" -t ~/layer/python
 
-            # ✅ Verify structure
-            ls -lh python/
-            ls -lh lib/
+            # Copy the shared PostgreSQL library needed by psycopg3
+            mkdir -p ~/layer/lib
+            cp /usr/lib64/libpq.so* ~/layer/lib
 
-      - run:
-          name: Package Lambda Layer
-          command: zip -r psycopg-layer.zip python lib
+            # Package the layer as a ZIP file
+            cd ~/layer
+            zip -r psycopg-layer.zip python lib
 
       - persist_to_workspace:
-          root: .
+          root: ~/layer
           paths:
-            - psycopg-layer.zip  # Store the zip file for Terraform
+            - psycopg-layer.zip  # Persist the ZIP file for later deployment
+
 
   terraform-deploy:
     docker:
@@ -104,9 +72,5 @@ jobs:
 workflows:
   build-and-deploy:
     jobs:
-      # - build-pg8000-layer
-      # - build-psycopg-layer
+      - build-psycopg-layer
       - terraform-deploy
-          # requires:
-          #   - build-pg8000-layer
-          #   - build-psycopg-layer  # Terraform runs only after both Lambda Layers are built
