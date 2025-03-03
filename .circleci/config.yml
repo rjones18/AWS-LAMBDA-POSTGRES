@@ -73,4 +73,6 @@ workflows:
   build-and-deploy:
     jobs:
       - build-psycopg-layer
-      - terraform-deploy
+      - terraform-deploy:
+          requires:
+            - build-psycopg-layer  # Terraform runs only after both Lambda Layers are built
