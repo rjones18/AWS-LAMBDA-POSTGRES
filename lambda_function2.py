@@ -10,9 +10,9 @@ logger = logging.getLogger()
 secretsmanager_client = boto3.client('secretsmanager')
 
 # Environment variable for the rotation Lambda function (you need an existing rotation function)
-ROTATION_LAMBDA_ARN = os.getenv("ROTATION_LAMBDA_ARN")
+ROTATION_LAMBDA_ARN = "arn:aws:lambda:us-west-2:014498625953:function:check_secrets_rotation_lambda"
 
-def enable_rotation():
+def rotate_secret():
     """Checks all secrets and enables rotation if not already enabled."""
     try:
         paginator = secretsmanager_client.get_paginator('list_secrets')
@@ -34,7 +34,7 @@ def enable_rotation():
                 # Enable rotation with an 8-day period
                 if ROTATION_LAMBDA_ARN:
                     logger.info(f"Enabling rotation for secret: {secret_name}")
-                    secretsmanager_client.enable_rotation(
+                    secretsmanager_client.rotate_secret(
                         SecretId=secret_id,
                         RotationLambdaARN=ROTATION_LAMBDA_ARN,
                         RotationRules={"AutomaticallyAfterDays": 8}
@@ -53,9 +53,11 @@ def enable_rotation():
 
 def lambda_handler(event, context):
     """Lambda function handler."""
-    enable_rotation()
+    rotate_secret()
     return {
         "statusCode": 200,
         "body": "Secret rotation check and update completed."
     }
+
+
 
