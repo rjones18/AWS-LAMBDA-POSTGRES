@@ -73,6 +73,13 @@ resource "aws_iam_policy" "lambda_policy" {
           "secretsmanager:EnableRotation"
         ]
         Resource = "*"
+      },
+            {
+        Effect = "Allow"
+        Action = [
+          "lambda:InvokeFunction",
+        ]
+        Resource = "*"
       }
     ]
   })
