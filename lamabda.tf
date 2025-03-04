@@ -156,7 +156,7 @@ data "archive_file" "lambda_zip2" {
 resource "aws_lambda_function" "check_secrets_rotation" {
   function_name    = "check_secrets_rotation_lambda"
   runtime         = "python3.9"
-  handler         = "lambda_function.lambda_handler"
+  handler         = "lambda_function2.lambda_handler"
   role            = aws_iam_role.lambda_role.arn
   filename        = data.archive_file.lambda_zip2.output_path
   source_code_hash = data.archive_file.lambda_zip2.output_base64sha256
