@@ -21,20 +21,18 @@ resource "aws_iam_role" "lambda_role" {
 # ✅ IAM Policy for Lambda to Access RDS & S3
 resource "aws_iam_policy" "lambda_policy" {
   name        = "lambda_rds_to_s3_policy"
-  description = "Policy for Lambda to access RDS and S3"
+  description = "Policy for Lambda to access RDS, S3, and Secrets Manager"
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["s3:PutObject", "s3:PutObjectAcl"]
-        Resource = ["arn:aws:s3:::${var.s3_bucket_name}/*", "arn:aws:s3:::${var.s3_bucket_name}/"]
-      },
-            {
-        Effect   = "Allow"
-        Action   = ["s3:ListBucket"]
-        Resource = "arn:aws:s3:::${var.s3_bucket_name}"
+        Action   = ["s3:PutObject", "s3:PutObjectAcl", "s3:ListBucket"]
+        Resource = [
+          "arn:aws:s3:::${var.s3_bucket_name}/*",
+          "arn:aws:s3:::${var.s3_bucket_name}/"
+        ]
       },
       {
         Effect   = "Allow"
@@ -56,10 +54,24 @@ resource "aws_iam_policy" "lambda_policy" {
         Effect   = "Allow"
         Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
         Resource = "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:ListSecrets",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:UpdateSecretVersionStage",
+          "secretsmanager:RotateSecret",
+          "secretsmanager:EnableRotation"
+        ]
+        Resource = "*"
       }
     ]
   })
 }
+
 
 # ✅ Attach IAM Policy to Role
 resource "aws_iam_role_policy_attachment" "lambda_attach" {
@@ -135,6 +147,30 @@ data "archive_file" "lambda_zip" {
   output_path = "lambda_function.zip"
 }
 
+data "archive_file" "lambda_zip2" {
+  type        = "zip"
+  source_file = "lambda_function2.py"
+  output_path = "lambda_function2.zip"
+}
+
+resource "aws_lambda_function" "check_secrets_rotation" {
+  function_name    = "check_secrets_rotation_lambda"
+  runtime         = "python3.9"
+  handler         = "lambda_function2.lambda_handler"
+  role            = aws_iam_role.lambda_role.arn
+  filename        = data.archive_file.lambda_zip2.output_path
+  source_code_hash = data.archive_file.lambda_zip2.output_base64sha256
+  timeout         = 30
+  memory_size     = 1024
+
+  environment {
+    variables = {
+      ROTATION_LAMBDA_ARN = aws_lambda_function.rds_to_s3.arn
+    }
+  }
+
+  depends_on = [aws_iam_role_policy_attachment.lambda_attach]
+}
 
 
 resource "aws_security_group" "lambda_sg" {
@@ -346,5 +382,31 @@ resource "aws_iam_policy" "cloudwatch_policy" {
 resource "aws_iam_role_policy_attachment" "cloudwatch_policy_attachment" {
   role       = aws_iam_role.cloudwatch_role.name
   policy_arn = aws_iam_policy.cloudwatch_policy.arn
+}
+
+
+resource "aws_cloudwatch_event_rule" "check_secrets_rotation_schedule" {
+  name                = "check-secrets-rotation-schedule"
+  description         = "Run check_secrets_rotation_lambda every day"
+  schedule_expression = "rate(1 day)" # Runs every 24 hours
+}
+
+resource "aws_cloudwatch_event_target" "check_secrets_rotation_target" {
+  rule      = aws_cloudwatch_event_rule.check_secrets_rotation_schedule.name
+  target_id = "LambdaCheckSecretsRotation"
+  arn       = aws_lambda_function.check_secrets_rotation.arn
+}
+
+resource "aws_lambda_permission" "allow_cloudwatch_to_invoke_check_secrets_rotation" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.check_secrets_rotation.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.check_secrets_rotation_schedule.arn
+}
+
+resource "aws_cloudwatch_log_group" "check_secrets_rotation_logs" {
+  name              = "/aws/lambda/check_secrets_rotation_lambda"
+  retention_in_days = 14
 }
 
