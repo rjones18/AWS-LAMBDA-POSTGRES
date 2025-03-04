@@ -415,3 +415,10 @@ resource "aws_cloudwatch_log_group" "check_secrets_rotation_logs" {
   name              = "/aws/lambda/check_secrets_rotation_lambda"
   retention_in_days = 14
 }
+
+resource "aws_lambda_permission" "allow_secrets_manager" {
+  statement_id  = "AllowSecretsManagerInvocation"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.enable_secrets_rotation.function_name
+  principal     = "secretsmanager.amazonaws.com"
+}
