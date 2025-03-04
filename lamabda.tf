@@ -100,18 +100,18 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
 
 # In the source account (Account A) where the Lambda's IAM role is defined
 
-resource "aws_iam_role_policy" "lambda_assume_role_policy" {
-  name   = "LambdaAssumeRolePolicy"
-  role   = "lambda_rds_to_s3_role"  # Replace with your Lambda's IAM Role
-  policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
-}
+# resource "aws_iam_role_policy" "lambda_assume_role_policy" {
+#   name   = "LambdaAssumeRolePolicy"
+#   role   = "lambda_rds_to_s3_role"  # Replace with your Lambda's IAM Role
+#   policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
+# }
 
-data "aws_iam_policy_document" "lambda_assume_role_policy" {
-  statement {
-    actions   = ["sts:AssumeRole"]
-    resources = ["arn:aws:iam::614768946157:role/CrossAccountRole"]  # Replace with the cross-account role ARN
-  }
-}
+# data "aws_iam_policy_document" "lambda_assume_role_policy" {
+#   statement {
+#     actions   = ["sts:AssumeRole"]
+#     resources = ["arn:aws:iam::614768946157:role/CrossAccountRole"]  # Replace with the cross-account role ARN
+#   }
+# }
 
 
 # ✅ S3 Bucket for Lambda Layer Storage
@@ -166,6 +166,13 @@ data "archive_file" "lambda_zip2" {
   output_path = "lambda_function2.zip"
 }
 
+data "archive_file" "lambda_zip3" {
+  type        = "zip"
+  source_file = "lambda_function3.py"
+  output_path = "lambda_function3.zip"
+}
+
+
 resource "aws_lambda_function" "check_secrets_rotation" {
   function_name    = "check_secrets_rotation_lambda"
   runtime         = "python3.9"
@@ -185,6 +192,38 @@ resource "aws_lambda_function" "check_secrets_rotation" {
   depends_on = [aws_iam_role_policy_attachment.lambda_attach]
 }
 
+
+resource "aws_lambda_function" "rotation_rds_secret" {
+  function_name    = "rotate_rds_password_lambda"
+  runtime         = "python3.9"
+  handler         = "lambda_function3.lambda_handler"
+  role            = aws_iam_role.lambda_role.arn
+  filename        = data.archive_file.lambda_zip3.output_path
+  source_code_hash = data.archive_file.lambda_zip3.output_base64sha256
+  timeout         = 30
+  memory_size     = 1024
+
+  layers = [aws_lambda_layer_version.psycopg3_layer.arn]
+  
+  vpc_config {
+    subnet_ids         = ["subnet-02a65c02202c7c17f","subnet-008196eb2a85dec81"] # Add your private subnet IDs
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  environment {
+    variables = {
+      DB_HOST     = split(":", data.aws_db_instance.rds_instance.endpoint)[0]  # This will only take the hostname part
+      DB_NAME     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_name"]
+      DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
+      DB_PASSWORD = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
+      S3_BUCKET   = aws_s3_bucket.lambda_s3.bucket
+      PYTHONPATH = "/opt/python"  # ✅ Ensure Lambda can import pg8000
+      LD_LIBRARY_PATH = "/opt/lib"
+    }
+  }
+
+  depends_on = [aws_iam_role_policy_attachment.lambda_attach]
+}
 
 resource "aws_security_group" "lambda_sg" {
   name        = "lambda_sg"
