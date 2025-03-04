@@ -10,7 +10,7 @@ logger = logging.getLogger()
 secretsmanager_client = boto3.client('secretsmanager')
 
 # Environment variable for the rotation Lambda function (you need an existing rotation function)
-ROTATION_LAMBDA_ARN = "arn:aws:lambda:us-west-2:014498625953:function:check_secrets_rotation_lambda"
+ROTATION_LAMBDA_ARN = "arn:aws:lambda:us-west-2:014498625953:function:rotate_rds_password_lambda"
 
 def rotate_secret():
     """Checks all secrets and enables rotation if not already enabled."""
