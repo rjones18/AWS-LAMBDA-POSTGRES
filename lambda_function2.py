@@ -25,12 +25,9 @@ def enable_rotation():
                         logger.info(f"Rotation already enabled for secret: {secret_name}")
                         continue
 
-                    # Enable rotation without attaching a specific Lambda function
+                    # Enable rotation with an 8-day rotation period
                     logger.info(f"Enabling rotation for secret: {secret_name}")
-                    secretsmanager_client.update_secret_rotation(
-                        SecretId=secret_id,
-                        RotationRules={"AutomaticallyAfterDays": 8}
-                    )
+                    secretsmanager_client.rotate_secret(SecretId=secret_id)
                     logger.info(f"Rotation enabled for {secret_name} with a period of 8 days.")
 
                 except secretsmanager_client.exceptions.ResourceNotFoundException:
@@ -51,7 +48,3 @@ def lambda_handler(event, context):
         "statusCode": 200,
         "body": "Secret rotation check and update completed."
     }
-
-
-
-
