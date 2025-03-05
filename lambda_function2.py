@@ -52,3 +52,4 @@ def lambda_handler(event, context):
         "body": "Secret rotation check and update completed."
     }
 
+
