@@ -5,14 +5,11 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
 
-# AWS Clients
+# AWS Secrets Manager Client
 secretsmanager_client = boto3.client('secretsmanager')
 
-# Rotation Lambda ARN to be attached to secrets
-ROTATION_LAMBDA_ARN = "arn:aws:lambda:us-west-2:014498625953:function:rotate_rds_password_lambda"
-
-def enable_rotation_and_attach_lambda():
-    """Checks all secrets, enables rotation, and attaches the rotation Lambda."""
+def enable_rotation():
+    """Checks all secrets and enables rotation if not already enabled."""
     try:
         paginator = secretsmanager_client.get_paginator('list_secrets')
         
@@ -25,17 +22,16 @@ def enable_rotation_and_attach_lambda():
                     # Check if rotation is already enabled
                     rotation_status = secretsmanager_client.describe_secret(SecretId=secret_id)
                     if rotation_status.get("RotationEnabled", False):
-                        logger.info(f"Enabling rotation for secret: {secret_name}")
-
-                        # Use rotate_secret to enable rotation and attach Lambda
-                        secretsmanager_client.rotate_secret(
-                            SecretId=secret_id,
-                            RotationLambdaARN=ROTATION_LAMBDA_ARN
-                        )
-                        logger.info(f"Rotation enabled and Lambda attached for {secret_name}")
-
-                    else:
                         logger.info(f"Rotation already enabled for secret: {secret_name}")
+                        continue
+
+                    # Enable rotation with an 8-day rotation period
+                    logger.info(f"Enabling rotation for secret: {secret_name}")
+                    secretsmanager_client.enable_rotation(
+                        SecretId=secret_id,
+                        RotationRules={"AutomaticallyAfterDays": 8}
+                    )
+                    logger.info(f"Rotation enabled for {secret_name} with a period of 8 days.")
 
                 except secretsmanager_client.exceptions.ResourceNotFoundException:
                     logger.warning(f"Secret not found: {secret_name}")
@@ -50,10 +46,9 @@ def enable_rotation_and_attach_lambda():
 
 def lambda_handler(event, context):
     """Lambda function handler."""
-    enable_rotation_and_attach_lambda()
+    enable_rotation()
     return {
         "statusCode": 200,
-        "body": "Secret rotation enabled and Lambda attached successfully."
+        "body": "Secret rotation check and update completed."
     }
-
 
