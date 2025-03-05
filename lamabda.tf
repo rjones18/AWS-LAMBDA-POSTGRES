@@ -468,3 +468,10 @@ resource "aws_lambda_permission" "allow_secrets_manager" {
   function_name = aws_lambda_function.check_secrets_rotation.function_name
   principal     = "secretsmanager.amazonaws.com"
 }
+
+resource "aws_lambda_permission" "allow_secrets_manager_rotate" {
+  statement_id  = "AllowSecretsManagerInvokeRotation"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.rotation_rds_secret.function_name
+  principal     = "secretsmanager.amazonaws.com"
+}
