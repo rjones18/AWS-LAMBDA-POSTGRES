@@ -25,24 +25,17 @@ def enable_rotation_and_attach_lambda():
                     # Check if rotation is already enabled
                     rotation_status = secretsmanager_client.describe_secret(SecretId=secret_id)
                     if rotation_status.get("RotationEnabled", False):
-                        logger.info(f"Rotation already enabled for secret: {secret_name}")
-                    else:
-                        # Enable rotation with an 8-day rotation period
                         logger.info(f"Enabling rotation for secret: {secret_name}")
-                        secretsmanager_client.enable_rotation(
-                            SecretId=secret_id,
-                            RotationLambdaARN=ROTATION_LAMBDA_ARN,
-                            RotationRules={"AutomaticallyAfterDays": 8}
-                        )
-                        logger.info(f"Rotation enabled for {secret_name} with a period of 8 days.")
 
-                    # Attach the specified Lambda function to the secret
-                    logger.info(f"Attaching rotation Lambda to secret: {secret_name}")
-                    secretsmanager_client.rotate_secret(
-                        SecretId=secret_id,
-                        RotationLambdaARN=ROTATION_LAMBDA_ARN
-                    )
-                    logger.info(f"Successfully attached rotation Lambda to secret: {secret_name}")
+                        # Use rotate_secret to enable rotation and attach Lambda
+                        secretsmanager_client.rotate_secret(
+                            SecretId=secret_id,
+                            RotationLambdaARN=ROTATION_LAMBDA_ARN
+                        )
+                        logger.info(f"Rotation enabled and Lambda attached for {secret_name}")
+
+                    else:
+                        logger.info(f"Rotation already enabled for secret: {secret_name}")
 
                 except secretsmanager_client.exceptions.ResourceNotFoundException:
                     logger.warning(f"Secret not found: {secret_name}")
