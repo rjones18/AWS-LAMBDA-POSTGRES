@@ -70,7 +70,8 @@ resource "aws_iam_policy" "lambda_policy" {
           "secretsmanager:PutSecretValue",
           "secretsmanager:UpdateSecretVersionStage",
           "secretsmanager:RotateSecret",
-          "secretsmanager:EnableRotation"
+          "secretsmanager:EnableRotation",
+          "secretsmanager:UpdateSecret"
         ]
         Resource = "*"
       },
