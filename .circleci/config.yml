@@ -1,40 +1,40 @@
 version: 2.1
 
 jobs:
-  build-psycopg-layer:
-    docker:
-      - image: amazonlinux:2  # Amazon Linux 2 for AWS Lambda compatibility
+  # build-psycopg-layer:
+  #   docker:
+  #     - image: amazonlinux:2  # Amazon Linux 2 for AWS Lambda compatibility
 
-    steps:
-      - checkout  # Checkout repository code
+    # steps:
+    #   - checkout  # Checkout repository code
 
-      - run:
-          name: Install System Dependencies
-          command: |
-            yum update -y
-            yum install -y gcc python3 python3-devel python3-pip zip tar gzip postgresql-libs postgresql-devel
-            python3 -m pip install --upgrade pip
+      # - run:
+      #     name: Install System Dependencies
+      #     command: |
+      #       yum update -y
+      #       yum install -y gcc python3 python3-devel python3-pip zip tar gzip postgresql-libs postgresql-devel
+      #       python3 -m pip install --upgrade pip
 
-      - run:
-          name: Build psycopg Layer
-          command: |
-            # Create a directory for the layer
-            mkdir -p ~/layer/python
-            # Install psycopg with its binary distribution into the layer's python folder
-            python3 -m pip install "psycopg[binary]" -t ~/layer/python
+      # - run:
+      #     name: Build psycopg Layer
+      #     command: |
+      #       # Create a directory for the layer
+      #       mkdir -p ~/layer/python
+      #       # Install psycopg with its binary distribution into the layer's python folder
+      #       python3 -m pip install "psycopg[binary]" -t ~/layer/python
 
-            # Copy the shared PostgreSQL library needed by psycopg3
-            mkdir -p ~/layer/lib
-            cp /usr/lib64/libpq.so* ~/layer/lib
+      #       # Copy the shared PostgreSQL library needed by psycopg3
+      #       mkdir -p ~/layer/lib
+      #       cp /usr/lib64/libpq.so* ~/layer/lib
 
-            # Package the layer as a ZIP file
-            cd ~/layer
-            zip -r psycopg-layer.zip python lib
+      #       # Package the layer as a ZIP file
+      #       cd ~/layer
+      #       zip -r psycopg-layer.zip python lib
 
-      - persist_to_workspace:
-          root: ~/layer
-          paths:
-            - psycopg-layer.zip  # Persist the ZIP file for later deployment
+      # - persist_to_workspace:
+      #     root: ~/layer
+      #     paths:
+      #       - psycopg-layer.zip  # Persist the ZIP file for later deployment
 
 
   terraform-deploy:
@@ -72,7 +72,4 @@ jobs:
 workflows:
   build-and-deploy:
     jobs:
-      - build-psycopg-layer
-      - terraform-deploy:
-          requires:
-            - build-psycopg-layer  # Terraform runs only after both Lambda Layers are built
+      - terraform-deploy
