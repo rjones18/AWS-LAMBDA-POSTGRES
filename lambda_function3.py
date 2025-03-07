@@ -1,4 +1,6 @@
 import json
+import string
+import secrets
 import boto3
 import psycopg
 import os
@@ -14,8 +16,15 @@ DB_HOST = os.getenv("DB_HOST")
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")  # The current password to connect to RDS
-S3_BUCKET_NAME = os.getenv("S3_BUCKET")
-S3_FILE_NAME = "rds_data.csv"
+
+def generate_random_password(length=16):
+    """
+    Generates a random password using letters, digits, and selected punctuation.
+    You can modify the character set or length as needed.
+    """
+    # Define an alphabet that avoids characters which may cause issues in SQL literals
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*()-_=+"
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 def lambda_handler(event, context):
     client = boto3.client('secretsmanager')
@@ -29,7 +38,7 @@ def lambda_handler(event, context):
     #     "new_value": "new_password_value"
     # }
     update_key = event.get('update_key', 'db_password')
-    new_value = event.get('db_password', 'postgres3')
+    new_value = event.get('db_password', generate_random_password())
     
     # Update the secret in AWS Secrets Manager
     try:
