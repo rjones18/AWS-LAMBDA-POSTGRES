@@ -154,11 +154,17 @@ resource "aws_lambda_layer_version" "psycopg3_layer" {
   description        = "psycopg3 Lambda Layer for Amazon Linux 2"
 }
 
-# ✅ Zip and Deploy Lambda Function
-data "archive_file" "lambda_zip" {
+# # ✅ Zip and Deploy Lambda Function
+# data "archive_file" "lambda_zip" {
+#   type        = "zip"
+#   source_file = "lambda_function.py"
+#   output_path = "lambda_function.zip"
+# }
+
+data "archive_file" "lambda_zip1" {
   type        = "zip"
-  source_file = "lambda_function.py"
-  output_path = "lambda_function.zip"
+  source_file = "lambda_function1.py"
+  output_path = "lambda_function1.zip"
 }
 
 data "archive_file" "lambda_zip2" {
@@ -167,26 +173,21 @@ data "archive_file" "lambda_zip2" {
   output_path = "lambda_function2.zip"
 }
 
-data "archive_file" "lambda_zip3" {
-  type        = "zip"
-  source_file = "lambda_function3.py"
-  output_path = "lambda_function3.zip"
-}
-
 
 resource "aws_lambda_function" "check_secrets_rotation" {
   function_name    = "check_secrets_rotation_lambda"
   runtime         = "python3.9"
-  handler         = "lambda_function2.lambda_handler"
+  handler         = "lambda_function1.lambda_handler"
   role            = aws_iam_role.lambda_role.arn
-  filename        = data.archive_file.lambda_zip2.output_path
-  source_code_hash = data.archive_file.lambda_zip2.output_base64sha256
+  filename        = data.archive_file.lambda_zip1.output_path
+  source_code_hash = data.archive_file.lambda_zip1.output_base64sha256
   timeout         = 30
   memory_size     = 1024
 
   environment {
     variables = {
-      ROTATION_LAMBDA_ARN = aws_lambda_function.rds_to_s3.arn
+      ROTATION_LAMBDA_ARN = aws_lambda_function.rotation_rds_secret.arn
+      SECRET_ID = data.aws_secretsmanager_secret.secrets.arn
     }
   }
 
@@ -197,10 +198,10 @@ resource "aws_lambda_function" "check_secrets_rotation" {
 resource "aws_lambda_function" "rotation_rds_secret" {
   function_name    = "rotate_rds_password_lambda"
   runtime         = "python3.9"
-  handler         = "lambda_function3.lambda_handler"
+  handler         = "lambda_function2.lambda_handler"
   role            = aws_iam_role.lambda_role.arn
-  filename        = data.archive_file.lambda_zip3.output_path
-  source_code_hash = data.archive_file.lambda_zip3.output_base64sha256
+  filename        = data.archive_file.lambda_zip2.output_path
+  source_code_hash = data.archive_file.lambda_zip2.output_base64sha256
   timeout         = 30
   memory_size     = 1024
 
@@ -216,7 +217,6 @@ resource "aws_lambda_function" "rotation_rds_secret" {
       DB_HOST     = split(":", data.aws_db_instance.rds_instance.endpoint)[0]  # This will only take the hostname part
       DB_NAME     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_name"]
       DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
-      DB_PASSWORD = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
       S3_BUCKET   = aws_s3_bucket.lambda_s3.bucket
       PYTHONPATH = "/opt/python"  # ✅ Ensure Lambda can import pg8000
       LD_LIBRARY_PATH = "/opt/lib"
@@ -240,201 +240,42 @@ resource "aws_security_group" "lambda_sg" {
 }
 
 
-resource "aws_lambda_function" "rds_to_s3" {
-  function_name    = "rds_to_s3_lambda"
-  runtime         = "python3.9"
-  handler         = "lambda_function.lambda_handler"
-  role            = aws_iam_role.lambda_role.arn
-  filename        = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-  timeout         = 30
-  memory_size     = 1024
+# resource "aws_lambda_function" "rds_to_s3" {
+#   function_name    = "rds_to_s3_lambda"
+#   runtime         = "python3.9"
+#   handler         = "lambda_function.lambda_handler"
+#   role            = aws_iam_role.lambda_role.arn
+#   filename        = data.archive_file.lambda_zip.output_path
+#   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+#   timeout         = 30
+#   memory_size     = 1024
 
-  layers = [aws_lambda_layer_version.psycopg3_layer.arn]
+#   layers = [aws_lambda_layer_version.psycopg3_layer.arn]
   
-  vpc_config {
-    subnet_ids         = ["subnet-02a65c02202c7c17f","subnet-008196eb2a85dec81"] # Add your private subnet IDs
-    security_group_ids = [aws_security_group.lambda_sg.id]
-  }
+#   vpc_config {
+#     subnet_ids         = ["subnet-02a65c02202c7c17f","subnet-008196eb2a85dec81"] # Add your private subnet IDs
+#     security_group_ids = [aws_security_group.lambda_sg.id]
+#   }
 
-  environment {
-    variables = {
-      DB_HOST     = split(":", data.aws_db_instance.rds_instance.endpoint)[0]  # This will only take the hostname part
-      DB_NAME     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_name"]
-      DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
-      DB_PASSWORD = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
-      S3_BUCKET   = aws_s3_bucket.lambda_s3.bucket
-      PYTHONPATH = "/opt/python"  # ✅ Ensure Lambda can import pg8000
-      LD_LIBRARY_PATH = "/opt/lib"
-    }
-  }
+#   environment {
+#     variables = {
+#       DB_HOST     = split(":", data.aws_db_instance.rds_instance.endpoint)[0]  # This will only take the hostname part
+#       DB_NAME     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_name"]
+#       DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
+#       DB_PASSWORD = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
+#       S3_BUCKET   = aws_s3_bucket.lambda_s3.bucket
+#       PYTHONPATH = "/opt/python"  # ✅ Ensure Lambda can import pg8000
+#       LD_LIBRARY_PATH = "/opt/lib"
+#     }
+#   }
 
-  depends_on = [aws_iam_role_policy_attachment.lambda_attach]
-}
+#   depends_on = [aws_iam_role_policy_attachment.lambda_attach]
+# }
 
 # ✅ CloudWatch Log Group for Lambda
 resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/rds_to_s3_lambda"
   retention_in_days = 14
-}
-
-
-# Step Function IAM Role
-resource "aws_iam_role" "step_function_role" {
-  name = "step_function_lambda_role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "states.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-# IAM Policy for Step Function to invoke Lambda
-resource "aws_iam_policy" "step_function_policy" {
-  name = "step_function_lambda_policy"
-  
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "lambda:InvokeFunction"
-        ]
-        Resource = [
-          aws_lambda_function.rds_to_s3.arn
-        ]
-      }
-    ]
-  })
-}
-
-# Attach policy to Step Function role
-resource "aws_iam_role_policy_attachment" "step_function_policy_attachment" {
-  role       = aws_iam_role.step_function_role.name
-  policy_arn = aws_iam_policy.step_function_policy.arn
-}
-
-# Step Function state machine
-resource "aws_sfn_state_machine" "sfn_state_machine" {
-  name     = "rds-to-s3-state-machine"
-  role_arn = aws_iam_role.step_function_role.arn
-
-  definition = jsonencode({
-    Comment = "A state machine that invokes a Lambda function"
-    StartAt = "InvokeLambda"
-    States = {
-      InvokeLambda = {
-        Type = "Task"
-        Resource = aws_lambda_function.rds_to_s3.arn
-        End = true
-      }
-    }
-  })
-
-  logging_configuration {
-    log_destination        = "${aws_cloudwatch_log_group.step_function_logs.arn}:*"
-    include_execution_data = true
-    level                 = "ALL"
-  }
-}
-
-# CloudWatch Log Group for Step Function
-resource "aws_cloudwatch_log_group" "step_function_logs" {
-  name              = "/aws/states/rds-to-s3-state-machine"
-  retention_in_days = 14
-}
-
-# IAM Policy for Step Function logging
-resource "aws_iam_policy" "step_function_logging_policy" {
-  name = "step_function_logging_policy"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogDelivery",
-          "logs:GetLogDelivery",
-          "logs:UpdateLogDelivery",
-          "logs:DeleteLogDelivery",
-          "logs:ListLogDeliveries",
-          "logs:PutLogEvents",
-          "logs:PutResourcePolicy",
-          "logs:DescribeResourcePolicies",
-          "logs:DescribeLogGroups"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-# Attach logging policy to Step Function role
-resource "aws_iam_role_policy_attachment" "step_function_logging_attachment" {
-  role       = aws_iam_role.step_function_role.name
-  policy_arn = aws_iam_policy.step_function_logging_policy.arn
-}
-
-# Optional: Add CloudWatch Event Rule to trigger Step Function on a schedule
-resource "aws_cloudwatch_event_rule" "step_function_trigger" {
-  name                = "trigger-rds-to-s3-step-function"
-  description         = "Trigger Step Function on a schedule"
-  schedule_expression = "rate(1 day)" # Adjust as needed
-}
-
-resource "aws_cloudwatch_event_target" "step_function_target" {
-  rule      = aws_cloudwatch_event_rule.step_function_trigger.name
-  target_id = "StepFunctionTarget"
-  arn       = aws_sfn_state_machine.sfn_state_machine.arn
-  role_arn  = aws_iam_role.cloudwatch_role.arn
-}
-
-# IAM Role for CloudWatch Events
-resource "aws_iam_role" "cloudwatch_role" {
-  name = "cloudwatch_step_function_role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "events.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-# IAM Policy for CloudWatch to invoke Step Function
-resource "aws_iam_policy" "cloudwatch_policy" {
-  name = "cloudwatch_step_function_policy"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "states:StartExecution"
-      ]
-      Resource = [
-        aws_sfn_state_machine.sfn_state_machine.arn
-      ]
-    }]
-  })
-}
-
-# Attach policy to CloudWatch role
-resource "aws_iam_role_policy_attachment" "cloudwatch_policy_attachment" {
-  role       = aws_iam_role.cloudwatch_role.name
-  policy_arn = aws_iam_policy.cloudwatch_policy.arn
 }
 
 

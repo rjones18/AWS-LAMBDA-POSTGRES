@@ -1,5 +1,5 @@
 data "aws_secretsmanager_secret" "secrets" {
-  arn = "arn:aws:secretsmanager:us-west-2:014498625953:secret:db-secret-0HOYKM"
+  arn = "arn:aws:secretsmanager:us-west-2:014498625953:secret:test-db-secret-lMtizF"
 }
 data "aws_secretsmanager_secret_version" "current" {
   secret_id = data.aws_secretsmanager_secret.secrets.id
