@@ -173,6 +173,12 @@ data "archive_file" "lambda_zip2" {
   output_path = "lambda_function2.zip"
 }
 
+data "archive_file" "lambda_zip3" {
+  type        = "zip"
+  source_file = "lambda_function3.py"
+  output_path = "lambda_function3.zip"
+}
+
 
 resource "aws_lambda_function" "check_secrets_rotation" {
   function_name    = "check_secrets_rotation_lambda"
@@ -187,7 +193,26 @@ resource "aws_lambda_function" "check_secrets_rotation" {
   environment {
     variables = {
       ROTATION_LAMBDA_ARN = aws_lambda_function.rotation_rds_secret.arn
-      SECRET_ID = data.aws_secretsmanager_secret.secrets.arn
+      # SECRET_ID = data.aws_secretsmanager_secret.secrets.arn
+    }
+  }
+
+  depends_on = [aws_iam_role_policy_attachment.lambda_attach]
+}
+
+resource "aws_lambda_function" "check_secrets_rotation_rds_managed" {
+  function_name    = "check_secrets_rotation_rds_managed_lambda"
+  runtime         = "python3.9"
+  handler         = "lambda_function3.lambda_handler"
+  role            = aws_iam_role.lambda_role.arn
+  filename        = data.archive_file.lambda_zip3.output_path
+  source_code_hash = data.archive_file.lambda_zip3.output_base64sha256
+  timeout         = 30
+  memory_size     = 1024
+
+  environment {
+    variables = {
+      ROTATION_LAMBDA_ARN = aws_lambda_function.rotation_rds_secret.arn
     }
   }
 
@@ -215,8 +240,8 @@ resource "aws_lambda_function" "rotation_rds_secret" {
   environment {
     variables = {
       DB_HOST     = split(":", data.aws_db_instance.rds_instance.endpoint)[0]  # This will only take the hostname part
-      DB_NAME     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_name"]
-      DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
+      # DB_NAME     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_name"]
+      # DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
       S3_BUCKET   = aws_s3_bucket.lambda_s3.bucket
       PYTHONPATH = "/opt/python"  # ✅ Ensure Lambda can import pg8000
       LD_LIBRARY_PATH = "/opt/lib"
