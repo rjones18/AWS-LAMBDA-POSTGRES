@@ -233,7 +233,7 @@ resource "aws_lambda_function" "rotation_rds_secret" {
   layers = [aws_lambda_layer_version.psycopg3_layer.arn]
   
   vpc_config {
-    subnet_ids         = ["subnet-02a65c02202c7c17f","subnet-008196eb2a85dec81"] # Add your private subnet IDs
+    subnet_ids         = ["subnet-001d77d46400727e0"] # Add your private subnet IDs
     security_group_ids = [aws_security_group.lambda_sg.id]
   }
 
@@ -254,7 +254,7 @@ resource "aws_lambda_function" "rotation_rds_secret" {
 resource "aws_security_group" "lambda_sg" {
   name        = "lambda_sg"
   description = "Security group for Lambda function"
-  vpc_id      = "vpc-09614cd61a9ffa007"
+  vpc_id      = "vpc-01a233381e58733e6"
 
   egress {
     from_port   = 0

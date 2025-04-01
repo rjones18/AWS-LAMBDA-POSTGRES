@@ -9,76 +9,83 @@ logger = logging.getLogger()
 # AWS Clients
 secretsmanager_client = boto3.client("secretsmanager")
 
-# Rotation period (default: 8 days)
-ROTATION_DAYS = int(os.environ.get("ROTATION_DAYS", "8"))
+# Prefix for filtering secrets
+SECRET_PREFIX = os.environ.get("SECRET_PREFIX", "rds!")  # You can hardcode if preferred
+SCHEDULE_EXPRESSION = os.environ.get("SCHEDULE_EXPRESSION", "rate(8 hours)")
+ROTATION_LAMBDA_ARN = os.environ.get("ROTATION_LAMBDA_ARN")  # Required for enabling rotation if not enabled
 
-def get_rds_managed_secrets():
-    """Retrieves all secrets managed by RDS."""
+def get_prefixed_secrets():
+    """Retrieves all secrets whose names start with the specified prefix."""
     try:
         paginator = secretsmanager_client.get_paginator("list_secrets")
-        rds_secrets = []
+        matched_secrets = []
 
         for page in paginator.paginate():
             for secret in page.get("SecretList", []):
-                # Check if the secret is "Managed by RDS"
-                if secret.get("OwningService") == "rds.amazonaws.com":
-                    rds_secrets.append(secret["ARN"])
+                secret_name = secret.get("Name", "")
+                if secret_name.startswith(SECRET_PREFIX):
+                    logger.info(f"Matched secret with prefix: {secret_name}")
+                    matched_secrets.append(secret["ARN"])
 
-        logger.info(f"Found {len(rds_secrets)} RDS-managed secrets.")
-        return rds_secrets
+        logger.info(f"Found {len(matched_secrets)} secrets with prefix '{SECRET_PREFIX}'.")
+        return matched_secrets
 
     except Exception as e:
         logger.error(f"Error retrieving secrets: {str(e)}")
         raise
 
-def update_rotation_period(secret_arn):
-    """Updates the rotation period for a given RDS-managed secret."""
+def update_rotation_schedule(secret_arn):
+    """Updates the rotation schedule using ScheduleExpression."""
     try:
-        # Get current secret details
         secret_metadata = secretsmanager_client.describe_secret(SecretId=secret_arn)
 
-        # Check if rotation is already enabled
         if not secret_metadata.get("RotationEnabled", False):
             logger.info(f"Rotation is NOT enabled for secret: {secret_arn}. Skipping.")
             return
-        
-        # Get current rotation period
-        rotation_rules = secret_metadata.get("RotationRules", {})
-        current_days = rotation_rules.get("AutomaticallyAfterDays")
 
-        if current_days == ROTATION_DAYS:
-            logger.info(f"Rotation period for {secret_arn} is already set to {ROTATION_DAYS} days. Skipping.")
+        current_expr = secret_metadata.get("RotationRules", {}).get("ScheduleExpression")
+
+        if current_expr == SCHEDULE_EXPRESSION:
+            logger.info(f"Schedule already set to '{SCHEDULE_EXPRESSION}' for {secret_arn}. Skipping.")
             return
 
-        # Update rotation period to 8 days
         secretsmanager_client.rotate_secret(
             SecretId=secret_arn,
-            RotationRules={"AutomaticallyAfterDays": ROTATION_DAYS}
+            RotationRules={
+                "ScheduleExpression": SCHEDULE_EXPRESSION
+            }
         )
-
-        logger.info(f"Updated rotation period to {ROTATION_DAYS} days for secret: {secret_arn}")
+        logger.info(f"Updated rotation schedule to '{SCHEDULE_EXPRESSION}' for secret: {secret_arn}")
 
     except secretsmanager_client.exceptions.ResourceNotFoundException:
         logger.warning(f"Secret not found: {secret_arn}")
     except secretsmanager_client.exceptions.InvalidRequestException as e:
         logger.error(f"Invalid request for secret {secret_arn}: {str(e)}")
     except Exception as e:
-        logger.error(f"Error updating rotation period for {secret_arn}: {str(e)}")
+        logger.error(f"Error updating rotation schedule for {secret_arn}: {str(e)}")
 
 def lambda_handler(event, context):
     """Lambda function handler."""
     try:
-        rds_secrets = get_rds_managed_secrets()
-        
-        if not rds_secrets:
-            logger.info("No RDS-managed secrets found.")
-            return {"statusCode": 200, "body": "No RDS-managed secrets found."}
+        matching_secrets = get_prefixed_secrets()
 
-        for secret_arn in rds_secrets:
-            update_rotation_period(secret_arn)
+        if not matching_secrets:
+            logger.info(f"No secrets found with prefix '{SECRET_PREFIX}'.")
+            return {"statusCode": 200, "body": f"No secrets found with prefix '{SECRET_PREFIX}'."}
 
-        return {"statusCode": 200, "body": "Rotation periods updated for RDS-managed secrets."}
+        for secret_arn in matching_secrets:
+            update_rotation_schedule(secret_arn)
+
+        return {"statusCode": 200, "body": f"Rotation schedules updated for secrets with prefix '{SECRET_PREFIX}'."}
 
     except Exception as e:
         logger.error(f"Lambda execution failed: {str(e)}")
         return {"statusCode": 500, "body": f"Error during execution: {str(e)}"}
+
+
+
+
+
+
+
+
