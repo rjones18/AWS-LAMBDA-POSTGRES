@@ -154,12 +154,12 @@ resource "aws_lambda_layer_version" "psycopg3_layer" {
   description        = "psycopg3 Lambda Layer for Amazon Linux 2"
 }
 
-# # ✅ Zip and Deploy Lambda Function
-# data "archive_file" "lambda_zip" {
-#   type        = "zip"
-#   source_file = "lambda_function.py"
-#   output_path = "lambda_function.zip"
-# }
+# ✅ Zip and Deploy Lambda Function
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_file = "lambda_function.py"
+  output_path = "lambda_function.zip"
+}
 
 data "archive_file" "lambda_zip1" {
   type        = "zip"
@@ -265,37 +265,37 @@ resource "aws_security_group" "lambda_sg" {
 }
 
 
-# resource "aws_lambda_function" "rds_to_s3" {
-#   function_name    = "rds_to_s3_lambda"
-#   runtime         = "python3.9"
-#   handler         = "lambda_function.lambda_handler"
-#   role            = aws_iam_role.lambda_role.arn
-#   filename        = data.archive_file.lambda_zip.output_path
-#   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-#   timeout         = 30
-#   memory_size     = 1024
+resource "aws_lambda_function" "rds_to_s3" {
+  function_name    = "rds_to_s3_lambda"
+  runtime         = "python3.9"
+  handler         = "lambda_function.lambda_handler"
+  role            = aws_iam_role.lambda_role.arn
+  filename        = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  timeout         = 30
+  memory_size     = 1024
 
-#   layers = [aws_lambda_layer_version.psycopg3_layer.arn]
+  layers = [aws_lambda_layer_version.psycopg3_layer.arn]
   
-#   vpc_config {
-#     subnet_ids         = ["subnet-02a65c02202c7c17f","subnet-008196eb2a85dec81"] # Add your private subnet IDs
-#     security_group_ids = [aws_security_group.lambda_sg.id]
-#   }
+  vpc_config {
+    subnet_ids         = ["subnet-001d77d46400727e0","subnet-095590515b65df913"] # Add your private subnet IDs
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
 
-#   environment {
-#     variables = {
-#       DB_HOST     = split(":", data.aws_db_instance.rds_instance.endpoint)[0]  # This will only take the hostname part
-#       DB_NAME     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_name"]
-#       DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_user"]
-#       DB_PASSWORD = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["db_password"]
-#       S3_BUCKET   = aws_s3_bucket.lambda_s3.bucket
-#       PYTHONPATH = "/opt/python"  # ✅ Ensure Lambda can import pg8000
-#       LD_LIBRARY_PATH = "/opt/lib"
-#     }
-#   }
+  environment {
+    variables = {
+      DB_HOST     = split(":", data.aws_db_instance.rds_instance.endpoint)[0]  # This will only take the hostname part
+      DB_NAME     = "edu"
+      DB_USER     = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["username"]
+      DB_PASSWORD = jsondecode(nonsensitive(data.aws_secretsmanager_secret_version.current.secret_string))["password"]
+      S3_BUCKET   = aws_s3_bucket.lambda_s3.bucket
+      PYTHONPATH = "/opt/python"  # ✅ Ensure Lambda can import pg8000
+      LD_LIBRARY_PATH = "/opt/lib"
+    }
+  }
 
-#   depends_on = [aws_iam_role_policy_attachment.lambda_attach]
-# }
+  depends_on = [aws_iam_role_policy_attachment.lambda_attach]
+}
 
 # ✅ CloudWatch Log Group for Lambda
 resource "aws_cloudwatch_log_group" "lambda_logs" {

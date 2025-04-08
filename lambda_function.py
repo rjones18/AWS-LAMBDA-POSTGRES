@@ -1,10 +1,10 @@
-import json
 import boto3
 import psycopg
 import csv
 import os
 import logging
 import botocore.exceptions
+import json  # Forgot to import json for error handling
 
 # Set up logging
 logger = logging.getLogger()
@@ -16,7 +16,7 @@ DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 S3_BUCKET_NAME = os.getenv("S3_BUCKET")
-S3_FILE_NAME = "rds_data.csv"
+S3_FILE_NAME = "rds_data2.csv"
 
 # ✅ Initialize S3 Resource
 s3 = boto3.resource("s3")
@@ -34,44 +34,16 @@ def lambda_handler(event, context):
         )
         cursor = conn.cursor()
 
-        # ✅ Ensure `employees` table exists
-        logger.info("Ensuring 'employees' table exists...")
-        create_table_query = """
-        CREATE TABLE IF NOT EXISTS employees (
-            id SERIAL PRIMARY KEY,
-            first_name VARCHAR(50),
-            last_name VARCHAR(50),
-            email VARCHAR(100),
-            hire_date DATE,
-            department VARCHAR(50),
-            salary DECIMAL(10,2)
-        );
-        """
-        cursor.execute(create_table_query)
-        conn.commit()
-
-        # ✅ Insert sample data into employees table
-        logger.info("Inserting employee data...")
-        insert_data_query = """
-        INSERT INTO employees (first_name, last_name, email, hire_date, department, salary)
-        VALUES 
-            ('Alice', 'Johnson', 'alice.johnson@example.com', '2023-05-10', 'Engineering', 80000.00),
-            ('Bob', 'Smith', 'bob.smith@example.com', '2023-06-15', 'Marketing', 75000.00),
-            ('Charlie', 'Brown', 'charlie.brown@example.com', '2023-07-01', 'HR', 70000.00)
-        ON CONFLICT DO NOTHING;
-        """
-        cursor.execute(insert_data_query)
-        conn.commit()
-
-        logger.info("Querying database...")
-        query = "SELECT * FROM employees;"
+        # ✅ Query the pg_roles or pg_user table for roles (users)
+        logger.info("Querying 'pg_roles' for user data...")
+        query = "SELECT rolname, rolsuper, rolcanlogin, rolcreatedb, rolcreaterole FROM pg_roles;"
         cursor.execute(query)
         rows = cursor.fetchall()
 
         column_names = [desc.name for desc in cursor.description]
-        logger.info(f"Found {len(rows)} rows in 'employees' table.")
+        logger.info(f"Found {len(rows)} roles in 'pg_roles'.")
 
-        # ✅ Write data to /tmp directory
+        # ✅ Write data to /tmp directory as CSV
         tmp_file_path = "/tmp/rds_data.csv"
         with open(tmp_file_path, "w", newline="") as f:
             csv_writer = csv.writer(f)
